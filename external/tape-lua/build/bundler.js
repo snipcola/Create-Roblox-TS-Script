@@ -69,7 +69,11 @@ const promises_1 = require("fs/promises"),
     return n;
   },
   initify = (e) => {
-    let t = e.findFirstChild("init.lua") || e.findFirstChild("init.luau");
+    let t =
+      e.findFirstChild("init.lua") ||
+      e.findFirstChild("init.luau") ||
+      e.findFirstChild("index.lua") ||
+      e.findFirstChild("index.luau");
     if (t && t.type == node_1.NodeType.Module) {
       for (let n of e.children) n != t && t.addChild(n);
       (t.basename = e.basename), e.children.clear(), (e = t);

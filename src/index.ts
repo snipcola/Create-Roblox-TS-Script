@@ -1,4 +1,4 @@
-import XLib from "./xlib/xlib";
+import XLib from "./xlib";
 
 const Players = game.GetService("Players");
 const LocalPlayer = Players.LocalPlayer;
