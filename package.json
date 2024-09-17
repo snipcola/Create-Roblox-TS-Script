@@ -1,6 +1,6 @@
 {
   "name": "roblox-ts-template",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Snipcola",
   "license": "MIT",
   "scripts": {
@@ -27,7 +27,6 @@
   },
   "dependencies": {
     "@rbxts/compiler-types": "3.0.0-types.0",
-    "@rbxts/services": "^1.5.5",
     "@rbxts/types": "^1.0.806",
     "roblox-ts": "^3.0.0",
     "tape-lua": "file:external/tape-lua",

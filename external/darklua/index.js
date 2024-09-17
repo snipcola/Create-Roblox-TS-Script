@@ -3,23 +3,15 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const { Minify } = require("lua-format");
-
-function minifyLua(code) {
-  return Minify(code, {
-    RenameGlobals: false,
-    RenameVariables: false,
-    SolveMath: false,
-  })
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => !l.startsWith("--") && l.length > 0)
-    .join("\n")
+function cleanLua(code) {
+  return code
+    .replace(/(\r\n|\n|\r)/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-function minifyFile(file) {
-  const contents = minifyLua(fs.readFileSync(file, "utf8"));
+function cleanFile(file) {
+  const contents = cleanLua(fs.readFileSync(file, "utf8"));
   fs.writeFileSync(file, contents, "utf8");
 }
 
@@ -46,4 +38,4 @@ const args = process.argv.slice(2);
 const outFile = args[args.length - 1];
 
 execFileSync(fullPath, args);
-minifyFile(outFile);
+cleanFile(outFile);

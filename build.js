@@ -1,6 +1,28 @@
 const fs = require("fs");
 const path = require("path");
 
+function fetchDirectory(originalPath) {
+  let path;
+
+  function getParent(_path) {
+    const array = _path.split("/");
+    return array.splice(0, array.length - 1).join("/");
+  }
+
+  function check(_path) {
+    function checkParent() {
+      const parent = getParent(_path);
+      if (parent) check(parent);
+    }
+
+    if (fs.existsSync(_path) && fs.statSync(_path).isDirectory()) path = _path;
+    else checkParent();
+  }
+
+  check(originalPath);
+  return path;
+}
+
 function fetchModules(contents) {
   const tsImportRegex = /TS\.import\(([^)]+)\)/g;
   const requireRegex = /local\s+TS\s*=\s*require\(([^)]+)\)/g;
@@ -20,7 +42,9 @@ function fetchModules(contents) {
         .slice(nodeModulesIndex)
         .map((arg) => arg.replace(/['"]/g, "").trim());
       const path = pathParts.join("/");
-      paths.push(path);
+      const directory = fetchDirectory(path);
+
+      if (directory) paths.push(directory);
     }
   }
 
@@ -47,12 +71,12 @@ function findInitFiles(module) {
       const stat = fs.statSync(filePath);
 
       if (stat.isDirectory()) {
-        iterateFolder(filePath);
-      } else if (file === "init.lua" || file === "init.luau") {
+        paths.push(...findInitFiles(filePath));
+      } else if (file.endsWith(".lua") || file.endsWith(".luau")) {
         paths.push(filePath);
       }
     });
-  } catch {
+  } catch (e) {
     return;
   }
 
@@ -80,7 +104,7 @@ function prepareLuaFile(path) {
     .flat()
     .filter((v) => typeof v === "string");
 
-  files.map(moveFile);
+  [...new Set(files)].map(moveFile);
 }
 
 prepareLuaFile("dist/init.luau");

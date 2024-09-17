@@ -1,5 +1,6 @@
 import XLib from "./xlib/xlib";
-import { Players } from "@rbxts/services";
+
+const Players = game.GetService("Players");
 const LocalPlayer = Players.LocalPlayer;
 
 function CreateNotification(
