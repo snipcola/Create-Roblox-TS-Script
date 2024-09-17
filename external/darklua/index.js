@@ -50,6 +50,7 @@ function cleanFile(file) {
 function minifyAndCleanFile(file) {
   minifyFile(file);
   cleanFile(file);
+  minifyFile(file);
 }
 
 const args = process.argv.slice(2);
