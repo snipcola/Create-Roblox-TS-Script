@@ -23,6 +23,13 @@ function Teleport(BasePart: BasePart, Two: CFrame) {
   BasePart.CFrame = Two;
 }
 
+let InitialCFrame;
+let LocalPlayerPrimaryPart = GetPlayerPrimaryPart(LocalPlayer);
+
+if (LocalPlayerPrimaryPart) {
+  InitialCFrame = LocalPlayerPrimaryPart.CFrame;
+}
+
 for (const Player of Players.GetPlayers()) {
   if (Player === LocalPlayer) continue;
 
@@ -31,7 +38,14 @@ for (const Player of Players.GetPlayers()) {
 
   if (LocalPlayerPrimaryPart && PlayerCFrame) {
     Teleport(LocalPlayerPrimaryPart, PlayerCFrame);
-    CreateNotification("Roblox TS", `Teleported to ${Player.Name}!`, 2.5);
-    task.wait(2.5);
+    CreateNotification("Roblox TS", `Teleported to ${Player.Name}!`, 0.75);
+    task.wait(0.75);
   }
+}
+
+LocalPlayerPrimaryPart = GetPlayerPrimaryPart(LocalPlayer);
+
+if (LocalPlayerPrimaryPart && InitialCFrame) {
+  CreateNotification("Roblox TS", `Teleported to Initial Position!`, 3);
+  Teleport(LocalPlayerPrimaryPart, InitialCFrame);
 }

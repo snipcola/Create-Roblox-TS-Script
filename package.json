@@ -1,6 +1,6 @@
 {
   "name": "roblox-ts-template",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Snipcola",
   "license": "MIT",
   "scripts": {
@@ -8,7 +8,7 @@
     "build-clean": "rimraf dist include",
     "build-bundle": "echo \"1. Build\" && rbxtsc && node build.js && tape dist",
     "build-move": "shx mkdir dist && shx mv script.lua dist",
-    "build-minify": "echo \"2. Minification\" && darklua process --config .darklua.json dist/script.lua dist/script.min.lua",
+    "build-minify": "echo \"2. Minification\" && darklua dist/script.lua dist/script.min.lua",
     "dev": "nodemon --quiet --watch src --ext \"*\" --exec pnpm --silent build",
     "clean": "rimraf dist include script.lua node_modules pnpm-lock.yaml"
   },

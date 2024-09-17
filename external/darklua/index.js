@@ -1,19 +1,8 @@
+const os = require("os");
 const { execFileSync } = require("child_process");
+
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
-
-function cleanLua(code) {
-  return code
-    .replace(/(\r\n|\n|\r)/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function cleanFile(file) {
-  const contents = cleanLua(fs.readFileSync(file, "utf8"));
-  fs.writeFileSync(file, contents, "utf8");
-}
 
 const platform = os.platform();
 const arch = os.arch();
@@ -33,9 +22,40 @@ if (platform === "linux") {
   process.exit(1);
 }
 
-const fullPath = path.join(__dirname, "bin", binaryPath);
-const args = process.argv.slice(2);
-const outFile = args[args.length - 1];
+binaryPath = path.join(__dirname, "bin", binaryPath);
 
-execFileSync(fullPath, args);
-cleanFile(outFile);
+function copyFile(file, copy) {
+  const contents = fs.readFileSync(file, "utf8");
+  fs.writeFileSync(copy, contents, "utf8");
+}
+
+function minifyFile(_path) {
+  const file = _path.split("/").pop();
+  const config = path.join(__dirname, "config", `${file}.json`);
+  execFileSync(binaryPath, ["process", "--config", config, _path, _path]);
+}
+
+function cleanLua(code) {
+  return code
+    .replace(/(\r\n|\n|\r)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanFile(file) {
+  const contents = cleanLua(fs.readFileSync(file, "utf8"));
+  fs.writeFileSync(file, contents, "utf8");
+}
+
+function minifyAndCleanFile(file) {
+  minifyFile(file);
+  cleanFile(file);
+}
+
+const args = process.argv.slice(2);
+const [file, minFile] = args;
+
+copyFile(file, minFile);
+
+minifyFile(file);
+minifyAndCleanFile(minFile);
