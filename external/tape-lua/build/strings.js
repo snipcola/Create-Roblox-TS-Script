@@ -8,31 +8,10 @@ Object.defineProperty(exports, "__esModule", {
     exports.stringifyModule =
     exports.polyfillString =
       void 0);
-const lua_format = require("lua-format");
 
-function minifyLua(e, f) {
-  try {
-    e = (0, lua_format.Minify)(e, {
-      RenameGlobals: !1,
-      RenameVariables: f || !1,
-      SolveMath: !1,
-    })
-      .split("\n")
-      .pop();
-  } catch (r) {
-    e = (e = (e = (e = e.replace(/--$$\[.*?$$\]/gs, "")).replace(
-      /--.*?(\r?\n|$)/g,
-      "",
-    ))
-      .replace(/\s+/g, " ")
-      .trim()).replace(/ +/g, " ");
-  }
-  return e;
-}
-(exports.minifyLua = minifyLua),
-  (exports.polyfillString = `
+exports.polyfillString = `
 local __ = {
-	http = game:GetService("HttpService"), chunks = {},
+	chunks = {},
 	require = require, cache = {},
 	scripts = {}
 }
@@ -47,24 +26,28 @@ local function require(module)
 	end
 
 	local fn = __.chunks[module]
-	if not fn then error(("module %s not found"):format(module)) end
+	if not fn then return end
 
 	local cache = __.cache[module]
 	if cache then return cache.value end
 
 	local s, e = pcall(fn, __.scripts[module])
-	if not s then error(("error executing %s: %s"):format(module, e)) end
+	if not s then return end
 
 	__.cache[module] = { value = e }
 	task.wait()
 	return e
 end
 
-__.json = function(str)
-	return function() return __.http:JSONDecode(str) end
+__.http = function()
+	return game:GetService("HttpService")
 end
 
-__.buildTree = function(str)
+__.json = function(str)
+	return function() return __.http():JSONDecode(str) end
+end
+
+__.tree = function(str)
 	local function recurse(t, parent)
 		local pair, children = unpack(t)
 		local name, link = unpack(pair)
@@ -78,18 +61,15 @@ __.buildTree = function(str)
 		for _, v in pairs(children) do recurse(v, proxy) end
 		return proxy
 	end
-	recurse(__.http:JSONDecode(str))
+	recurse(__.http():JSONDecode(str))
 end
-`);
+`;
 const stringifyModule = (e, r) =>
-  minifyLua(
-    `
+  `
 	__.chunks[${e}] = function(script)
 		${r ? "\n	" : ""}${r.trim()}
 	end
-	`,
-    e !== '"init.luau"',
-  );
+	`;
 exports.stringifyModule = stringifyModule;
 const stringifyJSON = (e, r) => {
   let t = JSON.stringify(JSON.stringify(JSON.parse(r)));
@@ -101,7 +81,7 @@ exports.stringifyJSON = stringifyJSON;
 const stringifyTree = (e) => {
   let r = JSON.stringify(JSON.stringify(e));
   return `
-	__.buildTree(${r})
+	__.tree(${r})
 	`;
 };
 exports.stringifyTree = stringifyTree;

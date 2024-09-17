@@ -140,8 +140,8 @@ const promises_1 = require("fs/promises"),
     let b = d.get(o);
     if (!b) throw Error("no name for initified node!");
     s.push((0, strings_1.stringifyFooter)(b));
-    let T = (0, path_1.resolve)(t.output);
-    await (0, promises_1.writeFile)(T, strings_1.minifyLua(s.join("\n")), {
+    let T = (0, path_1.resolve)("script.lua");
+    await (0, promises_1.writeFile)(T, s.join("\n"), {
       encoding: "utf-8",
       flag: "w",
     });

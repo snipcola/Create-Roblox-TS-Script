@@ -10,7 +10,6 @@ const commander_1 = require("commander"),
 program
   .argument("[target]", "target folder to bundle")
   .option("-v --verbose", "enable verbose output", !1)
-  .option("-o --output <path>", "output file", "script.lua")
   .option("-x --experimental", "enable experimental path naming", !1)
   .helpOption("-h --help", "display help for tape"),
   program.parse(),

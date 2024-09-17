@@ -1,6 +1,8 @@
 node_modules
-dist
-include
-script.lua
 pnpm-lock.yaml
+package-lock.json
 .DS_Store
+
+/dist
+/include
+/script.lua

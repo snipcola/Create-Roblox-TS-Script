@@ -1,22 +1,25 @@
 {
   "name": "roblox-ts-template",
+  "version": "0.0.2",
   "author": "Snipcola",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm clean && rbxtsc && cpx \"include/**\" dist/include && cpx \"node_modules/@rbxts/**/*.lua\" dist/include/node_modules/@rbxts -L && tape dist && pnpm clean && shx mkdir dist && shx mv script.lua dist",
-    "dev": "nodemon --watch src --ext \"*\" --exec pnpm build",
-    "clean": "rimraf dist include",
-    "full-clean": "rimraf dist include script.lua node_modules pnpm-lock.yaml"
+    "build": "pnpm --silent build-clean && pnpm --silent build-bundle && pnpm --silent build-clean && pnpm --silent build-move && pnpm --silent build-minify && echo \"3. Complete\" && echo",
+    "build-clean": "rimraf dist include",
+    "build-bundle": "echo \"1. Build\" && rbxtsc && node build.js && tape dist",
+    "build-move": "shx mkdir dist && shx mv script.lua dist",
+    "build-minify": "echo \"2. Minification\" && darklua process --config .darklua.json dist/script.lua dist/script.min.lua",
+    "dev": "nodemon --quiet --watch src --ext \"*\" --exec pnpm --silent build",
+    "clean": "rimraf dist include script.lua node_modules pnpm-lock.yaml"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
-    "cpx": "^1.5.0",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-roblox-ts": "^0.0.36",
-    "nodemon": "^3.1.4",
+    "nodemon": "^3.1.5",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
     "shx": "^0.3.4",
@@ -27,6 +30,7 @@
     "@rbxts/services": "^1.5.5",
     "@rbxts/types": "^1.0.806",
     "roblox-ts": "^3.0.0",
-    "tape-lua": "file:./external/tape-lua"
+    "tape-lua": "file:external/tape-lua",
+    "darklua": "file:external/darklua"
   }
 }

@@ -3,11 +3,10 @@
     "version": "3.4.0",
     "main": "build/index.js",
     "dependencies": {
-      "commander": "^9.4.1",
-      "lua-format": "^1.4.0"
+      "commander": "^9.4.1"
     },
     "bin": {
-      "tape": "./build/index.js"
+      "tape": "build/index.js"
     },
     "engines": {
       "node": ">=16.0.0"
@@ -28,7 +27,7 @@
       "dev": "ts-node-dev src/index.ts",
       "build": "tsc",
       "test": "exit 0",
-      "lint": "eslint --ext .js,.jsx,.ts,.tsx ./src/",
+      "lint": "eslint --ext .js,.jsx,.ts,.tsx src/",
       "format": "prettier . --write",
       "format:check": "prettier . --check"
     }

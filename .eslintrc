@@ -5,9 +5,9 @@
     "useJSXTextNode": true,
     "ecmaVersion": 2018,
     "sourceType": "module",
-    "project": "./tsconfig.json"
+    "project": "tsconfig.json"
   },
-  "ignorePatterns": ["./dist", "./node_modules"],
+  "ignorePatterns": ["dist", "node_modules"],
   "plugins": ["@typescript-eslint", "roblox-ts", "prettier"],
   "extends": [
     "eslint:recommended",
