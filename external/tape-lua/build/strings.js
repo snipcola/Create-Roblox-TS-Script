@@ -10,63 +10,61 @@ Object.defineProperty(exports, "__esModule", {
       void 0);
 
 exports.polyfillString = `
-local __ = {
-	chunks = {},
-	require = require, cache = {},
-	scripts = {}
-}
+local __ = { a = nil, b = nil, c = nil }
+local __require = require
+local __chunks = {}
+local __cache = {}
+local __scripts = {}
+local __http = game:GetService("HttpService")
 
 local function require(module)
 	if typeof(module) == "Instance" then
-		local name = __.scripts[module]
-		if name then module = name end
-	end
-	if typeof(module) ~= "string" then
-		return __.require(module)
+		module = __scripts[module] or module
 	end
 
-	local fn = __.chunks[module]
+	if typeof(module) ~= "string" then
+		return __require(module)
+	end
+
+	local fn = __chunks[module]
 	if not fn then return end
 
-	local cache = __.cache[module]
-	if cache then return cache.value end
+	local cached = __cache[module]
+	if cached then return cached.value end
 
-	local s, e = pcall(fn, __.scripts[module])
-	if not s then return end
+	local success, result = pcall(fn, __scripts[module])
+	if not success then return end
 
-	__.cache[module] = { value = e }
+	__cache[module] = { value = result }
 	task.wait()
-	return e
+	return result
 end
 
-__.http = function()
-	return game:GetService("HttpService")
+__.a = function(str)
+	return function() return __http:JSONDecode(str) end
 end
 
-__.json = function(str)
-	return function() return __.http():JSONDecode(str) end
-end
-
-__.tree = function(str)
-	local function recurse(t, parent)
-		local pair, children = unpack(t)
-		local name, link = unpack(pair)
-		local proxy = Instance.new(link and "ModuleScript" or "Folder")
-		proxy.Parent = parent
-		proxy.Name = name
-		if link then
-			__.scripts[proxy] = link
-			__.scripts[link] = proxy
-		end
-		for _, v in pairs(children) do recurse(v, proxy) end
-		return proxy
+__.c = function (t, parent)
+	local pair, children = unpack(t)
+	local name, link = unpack(pair)
+	local proxy = Instance.new(link and "ModuleScript" or "Folder")
+	proxy.Parent = parent
+	proxy.Name = name
+	if link then
+		__scripts[proxy] = link
+		__scripts[link] = proxy
 	end
-	recurse(__.http():JSONDecode(str))
+	for _, v in pairs(children) do __.c(v, proxy) end
+	return proxy
+end
+
+__.b = function(str)
+	__.c(__.a(str)())
 end
 `;
 const stringifyModule = (e, r) =>
   `
-	__.chunks[${e}] = function(script)
+	__chunks[${e}] = function(script)
 		${r ? "\n	" : ""}${r.trim()}
 	end
 	`;
@@ -74,14 +72,14 @@ exports.stringifyModule = stringifyModule;
 const stringifyJSON = (e, r) => {
   let t = JSON.stringify(JSON.stringify(JSON.parse(r)));
   return `
-	__.chunks[${e}] = __.json(${t})	
+	__chunks[${e}] = __.a(${t})	
 	`;
 };
 exports.stringifyJSON = stringifyJSON;
 const stringifyTree = (e) => {
   let r = JSON.stringify(JSON.stringify(e));
   return `
-	__.tree(${r})
+	__.b(${r})
 	`;
 };
 exports.stringifyTree = stringifyTree;
