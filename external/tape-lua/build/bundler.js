@@ -88,19 +88,6 @@ const promises_1 = require("fs/promises"),
       printTree(r, t + 1);
     0 == t && console.log();
   },
-  getParent = (e, t) => t.find((t) => t.children.has(e)),
-  getPathRepresentation = (e, t, n = "/") => {
-    let r = [],
-      i = e;
-    for (; i; ) {
-      let o = getParent(i, t),
-        a = (0, path_1.basename)(i.basename, (0, path_1.extname)(i.basename)),
-        l = void 0 == o,
-        s = o && void 0 == getParent(o, t);
-      s ? r.push(a) : l && i == e ? r.push("init") : l || r.push(a), (i = o);
-    }
-    return r.reverse().join(n);
-  },
   bundle = async (e, t) => {
     let n = (0, path_1.resolve)(e),
       r = await (0, promises_1.stat)(e);
@@ -117,12 +104,12 @@ const promises_1 = require("fs/promises"),
       l = a.filter((e) => e.type == node_1.NodeType.Module),
       s = [strings_1.polyfillString.trim()],
       d = new Map();
+    let idx = 0;
     for (let p of l) {
+      idx++;
       let f = (0, path_1.relative)(n, p.path),
         h = (0, path_1.extname)(f),
-        u = t.experimental
-          ? getPathRepresentation(p, a)
-          : f.replace(/\\/g, "/"),
+        u = idx.toString(),
         g = JSON.stringify(u);
       d.set(p, g.substring(1, g.length - 1));
       let m = await (0, promises_1.readFile)(p.path, "utf-8"),
