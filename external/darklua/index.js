@@ -9,20 +9,32 @@ const arch = os.arch();
 
 let binaryPath;
 
+function setBinaryPath(binary) {
+  binaryPath = path.join(__dirname, "bin", binary);
+}
+
+function chmodBinary() {
+  try {
+    execFileSync("chmod", ["+x", binaryPath]);
+  } catch {}
+}
+
 if (platform === "linux") {
-  binaryPath =
-    arch === "arm64" ? "darklua-linux-aarch64" : "darklua-linux-x86_64";
+  setBinaryPath(
+    arch === "arm64" ? "darklua-linux-aarch64" : "darklua-linux-x86_64",
+  );
+  chmodBinary();
 } else if (platform === "darwin") {
-  binaryPath =
-    arch === "arm64" ? "darklua-macos-aarch64" : "darklua-macos-x86_64";
+  setBinaryPath(
+    arch === "arm64" ? "darklua-macos-aarch64" : "darklua-macos-x86_64",
+  );
+  chmodBinary();
 } else if (platform === "win32") {
-  binaryPath = "darklua-windows-x86_64.exe";
+  setBinaryPath("darklua-windows-x86_64.exe");
 } else {
   console.error("Unsupported platform:", platform);
   process.exit(1);
 }
-
-binaryPath = path.join(__dirname, "bin", binaryPath);
 
 function copyFile(file, copy) {
   const contents = fs.readFileSync(file, "utf8");
