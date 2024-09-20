@@ -80,7 +80,7 @@ function findInitFiles(module) {
         paths.push(filePath);
       }
     });
-  } catch (e) {
+  } catch {
     return;
   }
 
@@ -170,3 +170,4 @@ async function main() {
 }
 
 main();
+module.exports = main;

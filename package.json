@@ -3,9 +3,10 @@
   "version": "0.0.7",
   "author": "Snipcola",
   "license": "MIT",
+  "type": "commonjs",
   "scripts": {
     "build": "node assets/build",
-    "dev": "chokidar --silent \"src/**/*\" -c \"node assets/build\"",
+    "dev": "node assets/dev",
     "clean": "node assets/clean"
   },
   "devDependencies": {
@@ -13,7 +14,6 @@
     "@rbxts/types": "^1.0.807",
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
-    "chokidar-cli": "^3.0.0",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
