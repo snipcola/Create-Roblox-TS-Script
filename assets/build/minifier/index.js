@@ -13,10 +13,10 @@ function setBinaryPath(binary) {
   binaryPath = path.join(__dirname, "bin", binary);
 }
 
-function prepareBinary() {
+function prepareBinary(darwin) {
   try {
     execFileSync("chmod", ["+x", binaryPath]);
-    execFileSync("xattr", ["-cr", binaryPath]);
+    if (darwin) execFileSync("xattr", ["-cr", binaryPath]);
   } catch {}
 }
 
@@ -29,7 +29,7 @@ if (platform === "linux") {
   setBinaryPath(
     arch === "arm64" ? "darklua-macos-aarch64" : "darklua-macos-x86_64",
   );
-  prepareBinary();
+  prepareBinary(true);
 } else if (platform === "win32") {
   setBinaryPath("darklua-windows-x86_64.exe");
 } else {
