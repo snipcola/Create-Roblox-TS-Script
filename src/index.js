@@ -47,7 +47,7 @@ async function main() {
     filesToForceCopy: [
       path.resolve(template, "assets"),
       path.resolve(template, ".eslintrc"),
-      path.resolve(template, ".gitignore"),
+      path.resolve(template, "_gitignore"),
       path.resolve(template, "default.project.json"),
       path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
@@ -105,8 +105,8 @@ async function main() {
     await Promise.all(
       config.supportedPackageManagers.map(function (command) {
         return new Promise(async function (res) {
-          const path = await lookpath(command);
-          if (path) return res({ path, name: path.split("/").pop() });
+          const _path = await lookpath(command);
+          if (_path) return res({ path: _path, name: path.basename(_path) });
           res();
         });
       }),
@@ -249,12 +249,18 @@ async function main() {
   console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
 
   for (const file of config.filesToForceCopy) {
-    const newFile = path.resolve(directory, file.split("/").pop());
+    const name = path.basename(file);
+    const newFile = path.resolve(
+      directory,
+      name === "_gitignore" ? ".gitignore" : name,
+    );
+
     fs.cpSync(file, newFile, { recursive: true, force: true });
   }
 
   for (const file of config.filesToOptionallyCopy) {
-    const newFile = path.resolve(directory, file.split("/").pop());
+    const name = path.basename(file);
+    const newFile = path.resolve(directory, name);
 
     if (!fs.existsSync(newFile)) {
       fs.cpSync(file, newFile, { recursive: true, force: true });

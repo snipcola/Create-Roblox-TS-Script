@@ -1,6 +1,6 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "author": "Snipcola",
   "keywords": [
     "roblox",
@@ -13,6 +13,9 @@
   "bin": {
     "create-roblox-ts-script": "src/index.js"
   },
+  "files": [
+    "template/**/*"
+  ],
   "dependencies": {
     "colorette": "^2.0.20",
     "lookpath": "^1.2.2",

@@ -123,7 +123,7 @@ function minify(file) {
   minifier.minifyFile(
     file,
     null,
-    path.resolve(__dirname, "config", `${file.split("/").pop()}.json`),
+    path.resolve(__dirname, "config", `${path.basename(file)}.json`),
   );
 }
 
@@ -155,7 +155,7 @@ async function main() {
       spinner.color = "yellow";
 
       prepareLuaFile(config.input);
-      bundler(config.folder, config.output.split("/").pop());
+      bundler(config.folder, path.basename(config.output));
     } catch {
       return spinner.error("Failed to bundle");
     }
@@ -166,7 +166,7 @@ async function main() {
 
       clean(config.clean);
       fs.mkdirSync(config.folder, { recursive: true });
-      fs.renameSync(config.output.split("/").pop(), config.output);
+      fs.renameSync(path.basename(config.output), config.output);
     } catch {
       return spinner.error("Failed to move files");
     }
