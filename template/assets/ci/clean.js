@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { measure } = require("./functions");
+const { measure } = require("./shared/functions");
 
 function clean(folders) {
   for (const folder of folders) {
@@ -9,7 +9,7 @@ function clean(folders) {
 
 const config = {
   clean: [
-    "dist",
+    "out",
     "include",
     "script.lua",
     "node_modules",

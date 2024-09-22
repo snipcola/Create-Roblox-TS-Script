@@ -238,7 +238,7 @@ class Bundler {
 
   bundle(path, { output: _output }) {
     if (!fs.statSync(path).isDirectory()) {
-      throw Error("Path is not a directory.");
+      throw new Error("Path is not a directory.");
     }
 
     path = _path.resolve(path);
@@ -247,7 +247,7 @@ class Bundler {
     const entryNode = this.initialize(root);
 
     if (entryNode.type !== "Module") {
-      throw Error("No entrypoint.");
+      throw new Error("No entrypoint.");
     }
 
     const entries = entryNode.flatten();
@@ -259,7 +259,7 @@ class Bundler {
       const extension = _path.extname(path);
 
       const transformer = this.getTransformer(extension);
-      if (!transformer) throw Error(`No transformer for ${extension}.`);
+      if (!transformer) throw new Error(`No transformer for ${extension}.`);
 
       const contents = fs.readFileSync(module.path, "utf8");
       output.push(
@@ -276,7 +276,7 @@ class Bundler {
     output.push(stringify.tree(tree));
 
     const name = names.find((n) => n.module === entryNode)?.name;
-    if (!name) throw Error("No name for entry node.");
+    if (!name) throw new Error("No name for entry node.");
 
     output.push(stringify.footer(name));
     fs.writeFileSync(_path.resolve(_output), output.join("\n\n"), "utf8");

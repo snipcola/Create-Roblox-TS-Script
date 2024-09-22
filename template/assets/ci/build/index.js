@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const build = require("roblox-ts/out/CLI/commands/build");
-const { measure } = require("../functions");
+const { measure } = require("../shared/functions");
 
 const bundler = require("./bundler");
 const minifier = require("darklua-bin-wrapper");
@@ -90,16 +90,16 @@ function findInitFiles(module) {
 }
 
 function moveFile(file) {
-  const distPath = file.startsWith("include")
+  const _path = file.startsWith("include")
     ? path.resolve(config.folder, file)
     : path.resolve(config.folder, "include", file);
-  const distDir = path.dirname(distPath);
+  const directory = path.dirname(_path);
 
-  if (!fs.existsSync(distDir)) {
-    fs.mkdirSync(distDir, { recursive: true });
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
   }
 
-  fs.copyFileSync(file, distPath);
+  fs.copyFileSync(file, _path);
 }
 
 function prepareLuaFile(path) {
@@ -127,13 +127,15 @@ function minify(file) {
   );
 }
 
-const root = path.resolve(__dirname, "..", "..");
+const root = path.resolve(__dirname, "..", "..", "..");
+const outFolder = path.resolve(root, "out");
+
 const config = {
-  folder: path.resolve(root, "dist"),
-  clean: [path.resolve(root, "dist"), path.resolve(root, "include")],
-  input: path.resolve(root, "dist/init.luau"),
-  output: path.resolve(root, "dist/script.lua"),
-  outputMin: path.resolve(root, "dist/script.min.lua"),
+  folder: outFolder,
+  clean: [outFolder, path.resolve(root, "include")],
+  input: path.resolve(root, outFolder, "init.luau"),
+  output: path.resolve(root, outFolder, "script.lua"),
+  outputMin: path.resolve(root, outFolder, "script.min.lua"),
 };
 
 async function main() {

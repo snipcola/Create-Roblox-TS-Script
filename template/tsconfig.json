@@ -16,9 +16,9 @@
     "target": "ESNext",
     "typeRoots": ["node_modules/@rbxts"],
     "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "out",
     "baseUrl": "src",
     "incremental": true,
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
   }
 }

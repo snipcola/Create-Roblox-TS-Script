@@ -1,6 +1,6 @@
 {
-  "name": "roblox-ts-template",
-  "version": "0.0.8",
+  "name": "create-roblox-ts-script",
+  "version": "0.0.9",
   "author": "Snipcola",
   "keywords": [
     "roblox",
@@ -10,27 +10,13 @@
     "roblox-ts",
     "rbxts"
   ],
-  "type": "commonjs",
-  "scripts": {
-    "build": "node assets/build",
-    "dev": "node assets/dev",
-    "clean": "node assets/clean"
+  "bin": {
+    "create-roblox-ts-script": "src/index.js"
   },
-  "devDependencies": {
-    "@rbxts/compiler-types": "3.0.0-types.0",
-    "@rbxts/types": "^1.0.807",
-    "@typescript-eslint/eslint-plugin": "^8.6.0",
-    "@typescript-eslint/parser": "^8.6.0",
-    "chokidar": "^4.0.0",
-    "darklua-bin-wrapper": "^0.0.2",
-    "eslint": "^9.10.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-roblox-ts": "^0.0.36",
-    "prettier": "^3.3.3",
-    "roblox-ts": "^3.0.0",
-    "typescript": "^5.6.2",
-    "unc-types": "file:assets/types/unc",
-    "yocto-spinner": "^0.1.0"
+  "dependencies": {
+    "colorette": "^2.0.20",
+    "lookpath": "^1.2.2",
+    "prompts": "^2.4.2",
+    "yargs": "^17.7.2"
   }
 }
