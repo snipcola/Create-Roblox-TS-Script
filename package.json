@@ -2,7 +2,14 @@
   "name": "roblox-ts-template",
   "version": "0.0.8",
   "author": "Snipcola",
-  "license": "MIT",
+  "keywords": [
+    "roblox",
+    "typescript",
+    "lua",
+    "luau",
+    "roblox-ts",
+    "rbxts"
+  ],
   "type": "commonjs",
   "scripts": {
     "build": "node assets/build",
@@ -15,6 +22,7 @@
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
     "chokidar": "^4.0.0",
+    "darklua-bin-wrapper": "^0.0.2",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",

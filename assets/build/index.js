@@ -5,7 +5,7 @@ const build = require("roblox-ts/out/CLI/commands/build");
 const { measure } = require("../functions");
 
 const bundler = require("./bundler");
-const minifier = require("./minifier");
+const minifier = require("darklua-bin-wrapper");
 
 function fetchDirectory(originalPath) {
   let path;
@@ -91,8 +91,8 @@ function findInitFiles(module) {
 
 function moveFile(file) {
   const distPath = file.startsWith("include")
-    ? path.join("dist", file)
-    : path.join("dist", "include", file);
+    ? path.resolve(config.folder, file)
+    : path.resolve(config.folder, "include", file);
   const distDir = path.dirname(distPath);
 
   if (!fs.existsSync(distDir)) {
@@ -119,12 +119,21 @@ function clean(folders) {
   }
 }
 
+function minify(file) {
+  minifier.minifyFile(
+    file,
+    null,
+    path.resolve(__dirname, "config", `${file.split("/").pop()}.json`),
+  );
+}
+
+const root = path.resolve(__dirname, "..", "..");
 const config = {
-  folder: "dist",
-  clean: ["dist", "include"],
-  input: "dist/init.luau",
-  output: "dist/script.lua",
-  outputMin: "dist/script.min.lua",
+  folder: path.resolve(root, "dist"),
+  clean: [path.resolve(root, "dist"), path.resolve(root, "include")],
+  input: path.resolve(root, "dist/init.luau"),
+  output: path.resolve(root, "dist/script.lua"),
+  outputMin: path.resolve(root, "dist/script.min.lua"),
 };
 
 async function main() {
@@ -164,7 +173,11 @@ async function main() {
       spinner.text = "Minifying";
       spinner.color = "green";
 
-      minifier(config.output, config.outputMin);
+      minify(config.output);
+      fs.copyFileSync(config.output, config.outputMin);
+
+      minifier.cleanFile(config.outputMin);
+      minify(config.outputMin);
     } catch {
       return spinner.error("Failed to minify");
     }
