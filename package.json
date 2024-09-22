@@ -1,6 +1,6 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "Snipcola",
   "keywords": [
     "roblox",
@@ -8,7 +8,8 @@
     "lua",
     "luau",
     "roblox-ts",
-    "rbxts"
+    "rbxts",
+    "bundle"
   ],
   "bin": {
     "create-roblox-ts-script": "src/index.js"

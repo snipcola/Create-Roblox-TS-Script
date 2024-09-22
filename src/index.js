@@ -11,13 +11,42 @@ const prompts = require("prompts");
 const { lookpath } = require("lookpath");
 const { yellow, green, blue } = require("colorette");
 
-yargs
+const {
+  pdirectory,
+  pname,
+  pauthor,
+  pversion,
+  git: _git,
+  pmanager,
+  ide: _ide,
+} = yargs
   .usage("Create Roblox-TS Script")
+  .alias("pd", "pdirectory")
+  .describe("pdirectory", "Project Directory")
+  .string("pdirectory")
+  .alias("pn", "pname")
+  .describe("pname", "Project Name")
+  .string("pname")
+  .alias("pa", "pauthor")
+  .describe("pauthor", "Project Author")
+  .string("pauthor")
+  .alias("pv", "pversion")
+  .describe("pversion", "Project Version")
+  .string("pversion")
+  .alias("g", "git")
+  .describe("git", "Initialize Git Repo")
+  .boolean("git")
+  .alias("pm", "pmanager")
+  .describe("pmanager", "Package Manager")
+  .string("pmanager")
+  .alias("i", "ide")
+  .describe("ide", "IDE")
+  .string("ide")
   .help("help")
   .alias("h", "help")
-  .describe("help", "Show available commands")
+  .describe("help", "Show Commands")
   .alias("v", "version")
-  .describe("version", "Show current version")
+  .describe("version", "Show Version")
   .recommendCommands()
   .strict()
   .wrap(yargs.terminalWidth())
@@ -67,21 +96,31 @@ async function main() {
     ],
   };
 
-  let { directory } = await prompts(
-    [
-      {
-        type: "text",
-        name: "directory",
-        message: "Project Directory",
-        initial: "./roblox-ts-script",
-      },
-    ],
-    {
-      onCancel: function () {
-        process.exit(1);
-      },
-    },
-  );
+  if (pmanager && !config.supportedPackageManagers.includes(pmanager)) {
+    return console.error(`✖ '${pmanager}' not supported.`);
+  }
+
+  if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
+    return console.error(`✖ '${_ide}' not available.`);
+  }
+
+  let { directory } = pdirectory
+    ? { directory: pdirectory }
+    : await prompts(
+        [
+          {
+            type: "text",
+            name: "directory",
+            message: "Project Directory",
+            initial: "./roblox-ts-script",
+          },
+        ],
+        {
+          onCancel: function () {
+            process.exit(1);
+          },
+        },
+      );
 
   directory = path.resolve(directory);
 
@@ -125,6 +164,14 @@ async function main() {
     )
   ).filter((p) => p !== undefined);
 
+  if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
+    return console.error(`✖ '${pmanager}' not available.`);
+  }
+
+  if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
+    return console.error(`✖ '${_ide}' not available.`);
+  }
+
   const existingPackageJSON =
     directoryExists && readJSONFile(path.resolve(directory, "package.json"));
 
@@ -133,63 +180,90 @@ async function main() {
     fs.existsSync(path.resolve(directory, ".git")) &&
     fs.statSync(path.resolve(directory, ".git")).isDirectory();
 
+  function nameValidation(value) {
+    if (!value) return "Name cannot be empty.";
+    if (!/^[a-zA-Z0-9-_]+$/.test(value))
+      return "Name is formatted incorrectly.";
+    return true;
+  }
+
+  function authorValidation(value) {
+    if (!value) return "Author cannot be empty.";
+    if (!/^[a-zA-Z0-9-_@.]+$/.test(value))
+      return "Author is formatted incorrectly.";
+    return true;
+  }
+
+  function versionValidation(value) {
+    if (!value) return "Version cannot be empty.";
+    if (
+      !/^\d+(\.\d+){0,2}(\.\d+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(
+        value,
+      )
+    )
+      return "Version is formatted incorrectly (x.y.z).";
+    return true;
+  }
+
+  function checkValidation(value, func) {
+    if (value) {
+      const validation = func(value);
+
+      if (validation !== true) {
+        console.error(`✖ ${validation}`);
+        return validation;
+      }
+    }
+  }
+
+  const validations = [
+    checkValidation(pname, nameValidation),
+    checkValidation(pauthor, authorValidation),
+    checkValidation(pversion, versionValidation),
+  ];
+
+  if (validations.some((v) => v !== undefined)) {
+    return;
+  }
+
   let { name, author, version, initializeGit, packageManager, IDE } =
     await prompts(
       [
         ...[
-          !existingPackageJSON?.name
+          !(pname || existingPackageJSON?.name)
             ? {
                 type: "text",
                 name: "name",
                 message: "Project Name",
                 initial: "Project",
-                validate: function (value) {
-                  if (!value) return "Name cannot be empty.";
-                  if (!/^[a-zA-Z0-9-_]+$/.test(value))
-                    return "Name is formatted incorrectly.";
-                  return true;
-                },
+                validate: nameValidation,
               }
             : {},
         ],
         ...[
-          !existingPackageJSON?.author
+          !(pauthor || existingPackageJSON?.author)
             ? {
                 type: "text",
                 name: "author",
                 message: "Project Author",
                 initial: "Author",
-                validate: function (value) {
-                  if (!value) return "Author cannot be empty.";
-                  if (!/^[a-zA-Z0-9-_@.]+$/.test(value))
-                    return "Author is formatted incorrectly.";
-                  return true;
-                },
+                validate: authorValidation,
               }
             : {},
         ],
         ...[
-          !existingPackageJSON?.version
+          !(pversion || existingPackageJSON?.version)
             ? {
                 type: "text",
                 name: "version",
                 message: "Project Version",
                 initial: "0.0.1",
-                validate: function (value) {
-                  if (!value) return "Version cannot be empty.";
-                  if (
-                    !/^\d+(\.\d+){0,2}(\.\d+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(
-                      value,
-                    )
-                  )
-                    return "Version is formatted incorrectly (x.y.z).";
-                  return true;
-                },
+                validate: versionValidation,
               }
             : {},
         ],
         ...[
-          !hasGitDirectory && git
+          !hasGitDirectory && git && !_git
             ? {
                 type: "confirm",
                 name: "initializeGit",
@@ -199,7 +273,7 @@ async function main() {
             : {},
         ],
         ...[
-          packageManagers.length > 1
+          !pmanager && packageManagers.length > 1
             ? {
                 type: "select",
                 name: "packageManager",
@@ -212,7 +286,7 @@ async function main() {
             : {},
         ],
         ...[
-          IDEs.length > 1
+          !_ide && IDEs.length > 1
             ? {
                 type: "select",
                 name: "IDE",
@@ -232,14 +306,20 @@ async function main() {
       },
     );
 
-  name = existingPackageJSON?.name || name;
-  author = existingPackageJSON?.author || author;
-  version = existingPackageJSON?.version || version;
+  name = pname || existingPackageJSON?.name || name;
+  author = pauthor || existingPackageJSON?.author || author;
+  version = pversion || existingPackageJSON?.version || version;
+  initializeGit = !hasGitDirectory && git && _git ? _git : initializeGit;
 
   packageManager =
-    packageManagers.length > 0 && (packageManager || packageManagers[0]);
+    packageManagers.length > 0 &&
+    (packageManagers.find((p) => p.name === pmanager) ||
+      packageManager ||
+      packageManagers[0]);
 
-  IDE = IDEs.length > 0 && (IDE || IDEs[0]);
+  IDE =
+    IDEs.length > 0 &&
+    (IDEs.find((i) => path.basename(i.path) === _ide) || IDE || IDEs[0]);
 
   if (!directoryExists) {
     console.log(blue(`- Creating '${path.basename(directory)}'.`));
