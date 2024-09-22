@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { measure } = require("./functions");
 
 function clean(folders) {
   for (const folder of folders) {
@@ -19,17 +20,13 @@ const config = {
   ],
 };
 
-async function main() {
-  const { default: yocto } = await import("yocto-spinner");
-  const spinner = yocto({ text: "Cleaning", color: "green" }).start();
-
+function main() {
   try {
     clean(config.clean);
   } catch {
-    return spinner.error("Failed to clean");
+    return console.error("Failed to clean");
   }
-
-  spinner.success("Cleaned");
 }
 
-main();
+console.log("Cleaning...");
+console.log(`Cleaned (took ${measure(main)}ms)`);

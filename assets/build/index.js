@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 
 const build = require("roblox-ts/out/CLI/commands/build");
+const { measure } = require("../functions");
+
 const bundler = require("./bundler");
 const minifier = require("./minifier");
 
@@ -129,44 +131,46 @@ async function main() {
   const { default: yocto } = await import("yocto-spinner");
   const spinner = yocto({ text: "Building", color: "blue" }).start();
 
-  try {
-    clean(config.clean);
-    build.handler({ project: "." });
-  } catch {
-    return spinner.error("Failed to build");
-  }
+  const elapsed = measure(function () {
+    try {
+      clean(config.clean);
+      build.handler({ project: "." });
+    } catch {
+      return spinner.error("Failed to build");
+    }
 
-  try {
-    spinner.text = "Bundling";
-    spinner.color = "yellow";
+    try {
+      spinner.text = "Bundling";
+      spinner.color = "yellow";
 
-    prepareLuaFile(config.input);
-    await bundler(config.folder, config.output.split("/").pop());
-  } catch {
-    return spinner.error("Failed to bundle");
-  }
+      prepareLuaFile(config.input);
+      bundler(config.folder, config.output.split("/").pop());
+    } catch {
+      return spinner.error("Failed to bundle");
+    }
 
-  try {
-    spinner.text = "Moving Files";
-    spinner.color = "magenta";
+    try {
+      spinner.text = "Moving Files";
+      spinner.color = "magenta";
 
-    clean(config.clean);
-    fs.mkdirSync(config.folder, { recursive: true });
-    fs.renameSync(config.output.split("/").pop(), config.output);
-  } catch {
-    return spinner.error("Failed to move files");
-  }
+      clean(config.clean);
+      fs.mkdirSync(config.folder, { recursive: true });
+      fs.renameSync(config.output.split("/").pop(), config.output);
+    } catch {
+      return spinner.error("Failed to move files");
+    }
 
-  try {
-    spinner.text = "Minifying";
-    spinner.color = "green";
+    try {
+      spinner.text = "Minifying";
+      spinner.color = "green";
 
-    minifier(config.output, config.outputMin);
-  } catch {
-    return spinner.error("Failed to minify");
-  }
+      minifier(config.output, config.outputMin);
+    } catch {
+      return spinner.error("Failed to minify");
+    }
+  });
 
-  spinner.success("Built");
+  spinner.success(`Built (took ${elapsed}ms)`);
 }
 
 main();
