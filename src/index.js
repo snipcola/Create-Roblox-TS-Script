@@ -101,7 +101,7 @@ async function main() {
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    return console.error(`✖ '${_ide}' not available.`);
+    return console.error(`✖ '${_ide}' not supported.`);
   }
 
   let { directory } = pdirectory
@@ -263,7 +263,7 @@ async function main() {
             : {},
         ],
         ...[
-          !hasGitDirectory && git && !_git
+          !hasGitDirectory && git && _git === undefined
             ? {
                 type: "confirm",
                 name: "initializeGit",
@@ -309,7 +309,8 @@ async function main() {
   name = pname || existingPackageJSON?.name || name;
   author = pauthor || existingPackageJSON?.author || author;
   version = pversion || existingPackageJSON?.version || version;
-  initializeGit = !hasGitDirectory && git && _git ? _git : initializeGit;
+  initializeGit =
+    !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
   packageManager =
     packageManagers.length > 0 &&
