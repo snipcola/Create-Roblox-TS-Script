@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const process = require("process");
-const { execSync } = require("child_process");
+const { spawnSync } = require("child_process");
 
 const yargs = require("yargs");
 const prompts = require("prompts");
@@ -62,11 +62,19 @@ function writeJSONFile(path, json) {
   fs.writeFileSync(path, JSON.stringify(json, null, 2), "utf8");
 }
 
-function executeCommand(command, cwd) {
-  execSync(command, {
-    cwd,
-    stdio: ["ignore", "ignore", "pipe"],
-  });
+function executeCommand(command, args, cwd) {
+  const windows = process.platform === "win32";
+
+  const result = spawnSync(
+    windows ? "cmd.exe" : command,
+    windows ? ["/c", command, ...args] : args,
+    {
+      cwd,
+      stdio: ["ignore", "ignore", "pipe"],
+    },
+  );
+
+  return result.error === undefined;
 }
 
 async function main() {
@@ -393,22 +401,40 @@ async function main() {
 
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
-    executeCommand(`${git} init`, directory);
+
+    if (!executeCommand(git, ["init"], directory)) {
+      console.error("✖ Failed to initialize git repository.");
+    }
   }
 
   if (packageManager) {
     console.log(
       blue(`- Installing dependencies using '${packageManager.name}'.`),
     );
-    executeCommand(`${packageManager.path} install --silent`, directory);
+
+    if (
+      !executeCommand(packageManager.path, ["install", "--silent"], directory)
+    ) {
+      return console.error(
+        `"✖ Failed to install dependencies using '${packageManager.name}'.`,
+      );
+    }
 
     console.log(blue(`- Building project using '${packageManager.name}'.`));
-    executeCommand(`${packageManager.path} run build`, directory);
+
+    if (!executeCommand(packageManager.path, ["run", "build"], directory)) {
+      return console.error(
+        `✖ Failed to build project using '${packageManager.name}'.`,
+      );
+    }
   }
 
   if (IDE) {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
-    executeCommand(`${IDE.path} . src/index.ts`, directory);
+
+    if (!executeCommand(IDE.path, [".", "src/index.ts"], directory)) {
+      console.error(`✖ Failed to open project in '${IDE.name}'.`);
+    }
   }
 
   console.log(green(`✔ Created '${name}': ${directory}`));
