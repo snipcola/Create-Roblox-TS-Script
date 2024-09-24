@@ -7,7 +7,7 @@ Builds & bundles TypeScript source files into a Lua script, which you can use on
 Make sure the following are installed:
 
 - [node](https://nodejs.org/en/download)
-- [pnpm](https://pnpm.io/installation) (optional)
+- [pnpm](https://pnpm.io/installation#using-a-standalone-script) (optional)
 
 It's recommended you also install the following VSCode extensions:
 

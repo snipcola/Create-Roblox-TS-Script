@@ -85,7 +85,6 @@ async function main() {
       path.resolve(template, "assets"),
       path.resolve(template, ".eslintrc"),
       path.resolve(template, "_gitignore"),
-      path.resolve(template, "default.project.json"),
       path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
     ],
@@ -105,11 +104,13 @@ async function main() {
   };
 
   if (pmanager && !config.supportedPackageManagers.includes(pmanager)) {
-    return console.error(`✖ '${pmanager}' not supported.`);
+    console.error(`✖ '${pmanager}' not supported.`);
+    process.exit(1);
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    return console.error(`✖ '${_ide}' not supported.`);
+    console.error(`✖ '${_ide}' not supported.`);
+    process.exit(1);
   }
 
   let { directory } = pdirectory
@@ -133,14 +134,16 @@ async function main() {
   directory = path.resolve(directory);
 
   if (path.extname(directory) !== "") {
-    return console.error("✖ Not a directory.");
+    console.error("✖ Not a directory.");
+    process.exit(1);
   }
 
   const directoryExists = fs.existsSync(directory);
 
   if (directoryExists) {
     if (!fs.statSync(directory).isDirectory()) {
-      return console.error("✖ Not a directory.");
+      console.error("✖ Not a directory.");
+      process.exit(1);
     }
 
     console.log(yellow("- Directory already exists, attempting anyway."));
@@ -173,11 +176,13 @@ async function main() {
   ).filter((p) => p !== undefined);
 
   if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
-    return console.error(`✖ '${pmanager}' not available.`);
+    console.error(`✖ '${pmanager}' not available.`);
+    process.exit(1);
   }
 
   if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
-    return console.error(`✖ '${_ide}' not available.`);
+    console.error(`✖ '${_ide}' not available.`);
+    process.exit(1);
   }
 
   const existingPackageJSON =
@@ -362,7 +367,8 @@ async function main() {
   const packageJSON = readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
-    return console.error("✖ File 'package.json' doesn't exist.");
+    console.error("✖ File 'package.json' doesn't exist.");
+    process.exit(1);
   }
 
   packageJSON.name = name.toLowerCase();
@@ -387,13 +393,14 @@ async function main() {
 
   writeJSONFile(packageJSONPath, packageJSON);
 
-  console.log(blue("- Modifying 'default.project.json' values."));
+  console.log(blue("- Modifying 'assets/rojo.json' values."));
 
-  const projectJSONPath = path.resolve(directory, "default.project.json");
+  const projectJSONPath = path.resolve(directory, "assets", "rojo.json");
   const projectJSON = readJSONFile(projectJSONPath);
 
   if (!projectJSON) {
-    return console.error("✖ File 'default.project.json' doesn't exist.");
+    console.error("✖ File 'assets/rojo.json' doesn't exist.");
+    process.exit(1);
   }
 
   projectJSON.name = name;
@@ -415,17 +422,19 @@ async function main() {
     if (
       !executeCommand(packageManager.path, ["install", "--silent"], directory)
     ) {
-      return console.error(
+      console.error(
         `"✖ Failed to install dependencies using '${packageManager.name}'.`,
       );
+      process.exit(1);
     }
 
     console.log(blue(`- Building project using '${packageManager.name}'.`));
 
     if (!executeCommand(packageManager.path, ["run", "build"], directory)) {
-      return console.error(
+      console.error(
         `✖ Failed to build project using '${packageManager.name}'.`,
       );
+      process.exit(1);
     }
   }
 
