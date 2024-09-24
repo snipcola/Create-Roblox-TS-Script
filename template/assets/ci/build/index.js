@@ -43,7 +43,7 @@ function fetchFiles(contents, filePath, attemptedPaths) {
 
     function tryGetPath(_path) {
       try {
-        const extensions = ["lua", "luau"];
+        const extensions = ["lua", "luau", "json", "txt"];
         const isDirectory =
           fs.existsSync(_path) && fs.statSync(_path).isDirectory();
 
