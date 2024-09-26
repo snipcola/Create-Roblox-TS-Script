@@ -40,6 +40,6 @@ If you installed `pnpm`, use that instead of `npm` for the following steps.
 ## Credits
 
 - [roblox-ts](https://github.com/roblox-ts/roblox-ts), compiler
-- [tape](https://github.com/Belkworks/tape), bundler
+- [tape](https://github.com/Belkworks/tape), bundler (heavily modified)
 - [darklua](https://github.com/seaofvoices/darklua), minifier
 - [rbxts-hax](https://github.com/richie0866/rbxts-hax), unc types
