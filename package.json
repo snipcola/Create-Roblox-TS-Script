@@ -1,7 +1,8 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "Snipcola",
+  "type": "module",
   "keywords": [
     "roblox",
     "typescript",
@@ -18,6 +19,8 @@
     "colorette": "^2.0.20",
     "lookpath": "^1.2.2",
     "prompts": "^2.4.2",
+    "temp-dir": "^3.0.0",
+    "unzipper": "^0.12.3",
     "yargs": "^17.7.2"
   }
 }

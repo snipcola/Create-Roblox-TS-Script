@@ -1,15 +1,27 @@
 #!/usr/bin/env node
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import url from "url";
 
-const process = require("process");
-const { spawnSync } = require("child_process");
+import path from "path";
+import { randomUUID } from "crypto";
 
-const yargs = require("yargs");
-const prompts = require("prompts");
+import { Readable } from "stream";
+import { finished } from "stream/promises";
 
-const { lookpath } = require("lookpath");
-const { yellow, green, blue } = require("colorette");
+import process from "process";
+import { spawnSync } from "child_process";
+
+import prompts from "prompts";
+import _yargs from "yargs";
+
+import { lookpath } from "lookpath";
+import { yellow, green, blue } from "colorette";
+
+import temporaryDirectory from "temp-dir";
+import unzipper from "unzipper";
+
+const yargs = _yargs();
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 const {
   pdirectory,
@@ -77,6 +89,91 @@ function executeCommand(command, args, cwd) {
   return result.error === undefined;
 }
 
+async function downloadFile(url, folder, name) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return false;
+
+    const filePath = path.resolve(folder, name || randomUUID());
+    const fileStream = fs.createWriteStream(filePath, { flags: "wx" });
+
+    await finished(Readable.fromWeb(response.body).pipe(fileStream));
+    return filePath;
+  } catch {
+    return false;
+  }
+}
+
+async function extractZip(file, folder, name) {
+  try {
+    const zip = await unzipper.Open.file(file);
+    const _path = path.resolve(folder, name || randomUUID());
+
+    await zip.extract({ path: _path });
+    return _path;
+  } catch {
+    return false;
+  }
+}
+
+async function installAftman() {
+  const aftman = {
+    repo: "LPGhatguy/aftman",
+    version: "v0.3.0",
+    files: {
+      linux: "aftman-0.3.0-linux-x86_64.zip",
+      linuxArm: "aftman-0.3.0-linux-aarch64.zip",
+      macos: "aftman-0.3.0-macos-x86_64.zip",
+      macosArm: "aftman-0.3.0-macos-aarch64.zip",
+      windows: "aftman-0.3.0-windows-x86_64.zip",
+    },
+    file: function () {
+      const { platform, arch } = process;
+      const arm = arch === "arm64" ? "Arm" : "";
+      let file;
+
+      if (platform === "linux") file = this.files[`linux${arm}`];
+      else if (platform === "darwin") file = this.files[`macos${arm}`];
+      else if (platform === "windows") file = this.files.windows;
+
+      return file
+        ? `https://github.com/${this.repo}/releases/download/${this.version}/${file}`
+        : undefined;
+    },
+  };
+
+  function getExecutable(folder) {
+    const file = fs.readdirSync(folder).shift();
+    if (!file) return false;
+
+    const executable = path.resolve(folder, file);
+    const platform = process.platform;
+
+    if (["linux", "darwin"].includes(platform)) {
+      executeCommand("chmod", ["+x", executable]);
+      if (platform === "darwin") executeCommand("xattr", ["-cr", executable]);
+    }
+
+    return executable;
+  }
+
+  const file = await downloadFile(aftman.file(), temporaryDirectory);
+  if (!file) return false;
+
+  const folder = await extractZip(file, temporaryDirectory);
+  if (!folder) return false;
+
+  const executable = getExecutable(folder);
+  if (!executable) return false;
+
+  const success = executeCommand(executable, ["self-install"]);
+  if (!success) return false;
+
+  fs.rmSync(file, { force: true });
+  fs.rmSync(folder, { force: true, recursive: true });
+  return true;
+}
+
 async function main() {
   const root = path.resolve(__dirname, "..");
   const template = path.resolve(root, "template");
@@ -115,14 +212,7 @@ async function main() {
   }
 
   const git = await lookpath("git");
-  const aftman = await lookpath("aftman");
-
-  if (!aftman) {
-    console.error(
-      "✖ Install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
-    );
-    process.exit(1);
-  }
+  let aftman = await lookpath("aftman");
 
   const packageManagers = (
     await Promise.all(
@@ -353,6 +443,11 @@ async function main() {
 
   for (const file of config.filesToForceCopy) {
     const name = path.basename(file);
+
+    if (!initializeGit && ["_gitignore"].includes(name)) {
+      continue;
+    }
+
     const newFile = path.resolve(
       directory,
       name === "_gitignore" ? ".gitignore" : name,
@@ -423,8 +518,21 @@ async function main() {
     }
   }
 
+  if (!aftman) {
+    console.log(yellow("- 'aftman' not found, attempting to install."));
+    await installAftman();
+    aftman = await lookpath("aftman");
+
+    if (!aftman) {
+      console.error(
+        "✖ Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
+      );
+      process.exit(1);
+    }
+  }
+
   console.log(blue(`- Installing dependencies using 'aftman'.`));
-  executeCommand(aftman, ["install"], directory);
+  executeCommand(aftman, ["install", "--no-trust-check"], directory);
 
   if (packageManager) {
     console.log(
