@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node assets/ci/build",
     "dev": "node assets/ci/dev",
-    "clean": "node assets/ci/clean"
+    "clean": "node assets/ci/clean",
+    "release": "git push origin main:deploy -f"
   },
   "devDependencies": {
     "@file/types": "file:assets/types",

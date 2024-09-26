@@ -202,12 +202,12 @@ async function main() {
   };
 
   if (pmanager && !config.supportedPackageManagers.includes(pmanager)) {
-    console.error(`✖ '${pmanager}' not supported.`);
+    console.error(`\u2716 '${pmanager}' not supported.`);
     process.exit(1);
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    console.error(`✖ '${_ide}' not supported.`);
+    console.error(`\u2716 '${_ide}' not supported.`);
     process.exit(1);
   }
 
@@ -239,12 +239,12 @@ async function main() {
   ).filter((p) => p !== undefined);
 
   if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
-    console.error(`✖ '${pmanager}' not available.`);
+    console.error(`\u2716 '${pmanager}' not available.`);
     process.exit(1);
   }
 
   if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
-    console.error(`✖ '${_ide}' not available.`);
+    console.error(`\u2716 '${_ide}' not available.`);
     process.exit(1);
   }
 
@@ -269,7 +269,7 @@ async function main() {
   directory = path.resolve(directory);
 
   if (path.extname(directory) !== "") {
-    console.error("✖ Not a directory.");
+    console.error("\u2716 Not a directory.");
     process.exit(1);
   }
 
@@ -277,7 +277,7 @@ async function main() {
 
   if (directoryExists) {
     if (!fs.statSync(directory).isDirectory()) {
-      console.error("✖ Not a directory.");
+      console.error("\u2716 Not a directory.");
       process.exit(1);
     }
 
@@ -322,7 +322,7 @@ async function main() {
       const validation = func(value);
 
       if (validation !== true) {
-        console.error(`✖ ${validation}`);
+        console.error(`\u2716 ${validation}`);
         return validation;
       }
     }
@@ -471,7 +471,7 @@ async function main() {
   const packageJSON = readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
-    console.error("✖ File 'package.json' doesn't exist.");
+    console.error("\u2716 File 'package.json' doesn't exist.");
     process.exit(1);
   }
 
@@ -503,7 +503,7 @@ async function main() {
   const projectJSON = readJSONFile(projectJSONPath);
 
   if (!projectJSON) {
-    console.error("✖ File 'assets/rojo.json' doesn't exist.");
+    console.error("\u2716 File 'assets/rojo.json' doesn't exist.");
     process.exit(1);
   }
 
@@ -513,8 +513,20 @@ async function main() {
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
 
-    if (!executeCommand(git, ["init"], directory)) {
-      console.error("✖ Failed to initialize git repository.");
+    const commands = [
+      executeCommand(git, ["init"], directory),
+      executeCommand(git, ["add", "."], directory),
+      executeCommand(
+        git,
+        ["commit", "-m", `"📦 Initialize Repository"`],
+        directory,
+      ),
+      executeCommand(git, ["branch", "-M", "main"], directory),
+      executeCommand(git, ["branch", "deploy"], directory),
+    ];
+
+    if (commands.some((c) => c !== true)) {
+      console.error("\u2716 Failed to initialize git repository.");
     }
   }
 
@@ -525,7 +537,7 @@ async function main() {
 
     if (!aftman) {
       console.error(
-        "✖ Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
+        "\u2716 Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
       );
       process.exit(1);
     }
@@ -543,7 +555,7 @@ async function main() {
       !executeCommand(packageManager.path, ["install", "--silent"], directory)
     ) {
       console.error(
-        `"✖ Failed to install dependencies using '${packageManager.name}'.`,
+        `"\u2716 Failed to install dependencies using '${packageManager.name}'.`,
       );
       process.exit(1);
     }
@@ -552,7 +564,7 @@ async function main() {
 
     if (!executeCommand(packageManager.path, ["run", "build"], directory)) {
       console.error(
-        `✖ Failed to build project using '${packageManager.name}'.`,
+        `\u2716 Failed to build project using '${packageManager.name}'.`,
       );
       process.exit(1);
     }
@@ -562,11 +574,11 @@ async function main() {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
 
     if (!executeCommand(IDE.path, [".", "src/index.ts"], directory)) {
-      console.error(`✖ Failed to open project in '${IDE.name}'.`);
+      console.error(`\u2716 Failed to open project in '${IDE.name}'.`);
     }
   }
 
-  console.log(green(`✔ Created '${name}': ${directory}`));
+  console.log(green(`\u2714 Created '${name}': ${directory}`));
 }
 
 main();
