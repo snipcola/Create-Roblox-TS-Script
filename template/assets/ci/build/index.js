@@ -1,12 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const process = require("process");
+const { spawnSync } = require("child_process");
 
 const build = require("roblox-ts/out/CLI/commands/build");
 const { measure } = require("../shared/functions");
-
 const bundler = require("./bundler");
-const minifier = require("darklua-bin-wrapper");
 
 function clean(folders) {
   for (const folder of folders) {
@@ -14,11 +13,44 @@ function clean(folders) {
   }
 }
 
-function minify(file) {
-  minifier.processFile(
-    file,
-    null,
+function executeCommand(command, args, cwd) {
+  const windows = process.platform === "win32";
+
+  const result = spawnSync(
+    windows ? "cmd.exe" : command,
+    windows ? ["/c", command, ...args] : args,
+    {
+      cwd,
+      stdio: ["ignore", "ignore", "pipe"],
+    },
+  );
+
+  return result.error === undefined;
+}
+
+function minifyFile(file) {
+  const success = executeCommand("darklua", [
+    "process",
+    "--config",
     path.resolve(__dirname, "config", `${path.basename(file)}.json`),
+    file,
+    file,
+  ]);
+
+  if (!success) {
+    throw Error;
+  }
+}
+
+function cleanFile(path) {
+  fs.writeFileSync(
+    path,
+    fs
+      .readFileSync(path, "utf8")
+      .replace(/(\r\n|\n|\r)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+    "utf8",
   );
 }
 
@@ -52,6 +84,7 @@ async function main() {
       });
     } catch {
       spinner.error("Failed to build");
+      clean(config.clean);
       process.exit(1);
     }
 
@@ -61,6 +94,7 @@ async function main() {
       bundler(config);
     } catch {
       spinner.error("Failed to bundle");
+      clean(config.clean);
       process.exit(1);
     }
 
@@ -73,6 +107,7 @@ async function main() {
       fs.renameSync(path.basename(config.output), config.output);
     } catch {
       spinner.error("Failed to move files");
+      clean(config.clean);
       process.exit(1);
     }
 
@@ -80,13 +115,14 @@ async function main() {
       spinner.text = "Minifying";
       spinner.color = "green";
 
-      minify(config.output);
+      minifyFile(config.output);
       fs.cpSync(config.output, config.outputMin, { force: true });
 
-      minifier.cleanFile(config.outputMin);
-      minify(config.outputMin);
+      cleanFile(config.outputMin);
+      minifyFile(config.outputMin);
     } catch {
       spinner.error("Failed to minify");
+      clean(config.clean);
       process.exit(1);
     }
   });

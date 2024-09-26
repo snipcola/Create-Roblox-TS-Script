@@ -86,6 +86,7 @@ async function main() {
       path.resolve(template, ".eslintrc"),
       path.resolve(template, "_gitignore"),
       path.resolve(template, "package.json"),
+      path.resolve(template, "aftman.toml"),
       path.resolve(template, "tsconfig.json"),
     ],
     filesToOptionallyCopy: [path.resolve(template, "src")],
@@ -110,6 +111,50 @@ async function main() {
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
     console.error(`✖ '${_ide}' not supported.`);
+    process.exit(1);
+  }
+
+  const git = await lookpath("git");
+  const aftman = await lookpath("aftman");
+
+  if (!aftman) {
+    console.error(
+      "✖ Install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
+    );
+    process.exit(1);
+  }
+
+  const packageManagers = (
+    await Promise.all(
+      config.supportedPackageManagers.map(function (command) {
+        return new Promise(async function (res) {
+          const _path = await lookpath(command);
+          if (_path) return res({ path: _path, name: path.basename(_path) });
+          res();
+        });
+      }),
+    )
+  ).filter((p) => p !== undefined);
+
+  const IDEs = (
+    await Promise.all(
+      config.supportedIDEs.map(function ({ name, command }) {
+        return new Promise(async function (res) {
+          const path = await lookpath(command);
+          if (path) return res({ path, name });
+          res();
+        });
+      }),
+    )
+  ).filter((p) => p !== undefined);
+
+  if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
+    console.error(`✖ '${pmanager}' not available.`);
+    process.exit(1);
+  }
+
+  if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
+    console.error(`✖ '${_ide}' not available.`);
     process.exit(1);
   }
 
@@ -147,42 +192,6 @@ async function main() {
     }
 
     console.log(yellow("- Directory already exists, attempting anyway."));
-  }
-
-  const git = await lookpath("git");
-
-  const packageManagers = (
-    await Promise.all(
-      config.supportedPackageManagers.map(function (command) {
-        return new Promise(async function (res) {
-          const _path = await lookpath(command);
-          if (_path) return res({ path: _path, name: path.basename(_path) });
-          res();
-        });
-      }),
-    )
-  ).filter((p) => p !== undefined);
-
-  const IDEs = (
-    await Promise.all(
-      config.supportedIDEs.map(function ({ name, command }) {
-        return new Promise(async function (res) {
-          const path = await lookpath(command);
-          if (path) return res({ path, name });
-          res();
-        });
-      }),
-    )
-  ).filter((p) => p !== undefined);
-
-  if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
-    console.error(`✖ '${pmanager}' not available.`);
-    process.exit(1);
-  }
-
-  if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
-    console.error(`✖ '${_ide}' not available.`);
-    process.exit(1);
   }
 
   const existingPackageJSON =
@@ -413,6 +422,9 @@ async function main() {
       console.error("✖ Failed to initialize git repository.");
     }
   }
+
+  console.log(blue(`- Installing dependencies using 'aftman'.`));
+  executeCommand(aftman, ["install"], directory);
 
   if (packageManager) {
     console.log(
