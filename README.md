@@ -41,6 +41,12 @@ If you installed `pnpm`, use that instead of `npm` for the following steps.
 
    If you'd like to manually start the build process, instead of running the dev script, run `npm run build / pnpm build` which will build once.
 
+4. **Deploy** (optional)
+
+   If you chose to initialize a git repository, and have it connected to a remote GitHub repo, you can run `npm run release / pnpm release` to create a release with the script attached.
+
+   Only do this once you've made changes and pushed them to the `main` branch. Otherwise, it won't do anything.
+
 ## Credits
 
 - [roblox-ts](https://github.com/roblox-ts/roblox-ts), compiler

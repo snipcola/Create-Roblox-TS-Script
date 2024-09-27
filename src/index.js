@@ -182,6 +182,7 @@ async function main() {
       path.resolve(template, "assets"),
       path.resolve(template, ".eslintrc"),
       path.resolve(template, "_gitignore"),
+      path.resolve(template, ".github"),
       path.resolve(template, "package.json"),
       path.resolve(template, "aftman.toml"),
       path.resolve(template, "tsconfig.json"),
@@ -444,7 +445,7 @@ async function main() {
   for (const file of config.filesToForceCopy) {
     const name = path.basename(file);
 
-    if (!initializeGit && ["_gitignore"].includes(name)) {
+    if (!initializeGit && ["_gitignore", ".github"].includes(name)) {
       continue;
     }
 
@@ -518,11 +519,11 @@ async function main() {
       executeCommand(git, ["add", "."], directory),
       executeCommand(
         git,
-        ["commit", "-m", `"📦 Initialize Repository"`],
+        ["commit", "-m", "📦 Initialize Repository"],
         directory,
       ),
       executeCommand(git, ["branch", "-M", "main"], directory),
-      executeCommand(git, ["branch", "deploy"], directory),
+      executeCommand(git, ["branch", "release"], directory),
     ];
 
     if (commands.some((c) => c !== true)) {
