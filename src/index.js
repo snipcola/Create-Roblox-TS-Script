@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import os from "os";
 import fs from "fs";
 import url from "url";
 
@@ -75,18 +76,22 @@ function writeJSONFile(path, json) {
 }
 
 function executeCommand(command, args, cwd) {
-  const windows = process.platform === "win32";
-
+  const useCMD =
+    process.platform === "win32" && !command?.toLowerCase()?.endsWith(".exe");
   const result = spawnSync(
-    windows ? "cmd.exe" : command,
-    windows ? ["/c", command, ...args] : args,
+    useCMD ? "cmd.exe" : command,
+    useCMD ? ["/c", command, ...args] : args,
     {
       cwd,
-      stdio: ["ignore", "ignore", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
     },
   );
 
-  return result.error === undefined;
+  return {
+    success: result.error === undefined,
+    output: result.stdout.toString(),
+    error: result.stderr.toString(),
+  };
 }
 
 async function downloadFile(url, folder, name) {
@@ -134,7 +139,7 @@ async function installAftman() {
 
       if (platform === "linux") file = this.files[`linux${arm}`];
       else if (platform === "darwin") file = this.files[`macos${arm}`];
-      else if (platform === "windows") file = this.files.windows;
+      else if (platform === "win32") file = this.files.windows;
 
       return file
         ? `https://github.com/${this.repo}/releases/download/${this.version}/${file}`
@@ -157,21 +162,33 @@ async function installAftman() {
     return executable;
   }
 
-  const file = await downloadFile(aftman.file(), temporaryDirectory);
-  if (!file) return false;
+  let file;
+  let folder;
 
-  const folder = await extractZip(file, temporaryDirectory);
-  if (!folder) return false;
+  function clean() {
+    if (file) fs.rmSync(file, { force: true });
+    if (folder) fs.rmSync(folder, { force: true, recursive: true });
+    return true;
+  }
+
+  file = await downloadFile(aftman.file(), temporaryDirectory);
+  if (!file) return !clean();
+
+  folder = await extractZip(file, temporaryDirectory);
+  if (!folder) return !clean();
 
   const executable = getExecutable(folder);
-  if (!executable) return false;
+  if (!executable) return !clean();
 
-  const success = executeCommand(executable, ["self-install"]);
-  if (!success) return false;
+  const { success } = executeCommand(executable, ["self-install"]);
+  if (!success) return !clean();
 
-  fs.rmSync(file, { force: true });
-  fs.rmSync(folder, { force: true, recursive: true });
-  return true;
+  return clean();
+}
+
+async function getAftman() {
+  const directory = path.resolve(os.homedir(), ".aftman", "bin");
+  return await lookpath("aftman", { include: [directory] });
 }
 
 async function main() {
@@ -189,7 +206,20 @@ async function main() {
     ],
     filesToOptionallyCopy: [path.resolve(template, "src")],
     packageJSONValuesToKeep: ["scripts", "dependencies", "devDependencies"],
-    supportedPackageManagers: ["pnpm", "yarn", "npm"],
+    supportedPackageManagers: [
+      {
+        name: "PNPM",
+        command: "pnpm",
+      },
+      {
+        name: "Yarn",
+        command: "yarn",
+      },
+      {
+        name: "NPM",
+        command: "npm",
+      },
+    ],
     supportedIDEs: [
       {
         name: "VSCode",
@@ -202,25 +232,31 @@ async function main() {
     ],
   };
 
-  if (pmanager && !config.supportedPackageManagers.includes(pmanager)) {
-    console.error(`\u2716 '${pmanager}' not supported.`);
+  function error(...args) {
+    console.error(...args);
     process.exit(1);
+  }
+
+  if (
+    pmanager &&
+    !config.supportedPackageManagers.find((p) => p.command === pmanager)
+  ) {
+    error(`\u2716 '${pmanager}' not supported.`);
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    console.error(`\u2716 '${_ide}' not supported.`);
-    process.exit(1);
+    error(`\u2716 '${_ide}' not supported.`);
   }
 
   const git = await lookpath("git");
-  let aftman = await lookpath("aftman");
+  let aftman = await getAftman();
 
   const packageManagers = (
     await Promise.all(
-      config.supportedPackageManagers.map(function (command) {
+      config.supportedPackageManagers.map(function ({ name, command }) {
         return new Promise(async function (res) {
-          const _path = await lookpath(command);
-          if (_path) return res({ path: _path, name: path.basename(_path) });
+          const path = await lookpath(command);
+          if (path) return res({ path, name });
           res();
         });
       }),
@@ -240,13 +276,11 @@ async function main() {
   ).filter((p) => p !== undefined);
 
   if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
-    console.error(`\u2716 '${pmanager}' not available.`);
-    process.exit(1);
+    error(`\u2716 '${pmanager}' not available.`);
   }
 
   if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
-    console.error(`\u2716 '${_ide}' not available.`);
-    process.exit(1);
+    error(`\u2716 '${_ide}' not available.`);
   }
 
   let { directory } = pdirectory
@@ -270,16 +304,14 @@ async function main() {
   directory = path.resolve(directory);
 
   if (path.extname(directory) !== "") {
-    console.error("\u2716 Not a directory.");
-    process.exit(1);
+    error("\u2716 Not a directory.");
   }
 
   const directoryExists = fs.existsSync(directory);
 
   if (directoryExists) {
     if (!fs.statSync(directory).isDirectory()) {
-      console.error("\u2716 Not a directory.");
-      process.exit(1);
+      error("\u2716 Not a directory.");
     }
 
     console.log(yellow("- Directory already exists, attempting anyway."));
@@ -425,6 +457,62 @@ async function main() {
   initializeGit =
     !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
+  if (initializeGit) {
+    const nameArgs = ["config", "--global", "user.name"];
+    const emailArgs = ["config", "--global", "user.email"];
+
+    const { output: name } = executeCommand(git, nameArgs);
+    const { output: email } = executeCommand(git, emailArgs);
+
+    if (!name) {
+      console.log(yellow("- Name not set for 'git'."));
+
+      const { newName } = await prompts(
+        [
+          {
+            type: "text",
+            name: "newName",
+            message: "Git Name",
+            initial: "John Doe",
+          },
+        ],
+        {
+          onCancel: function () {
+            process.exit(1);
+          },
+        },
+      );
+
+      if (!newName || !executeCommand(git, [...nameArgs, newName]).success) {
+        error("\u2716 Failed to initialize git repository.");
+      }
+    }
+
+    if (!email) {
+      console.log(yellow("- Email not set for 'git'."));
+
+      const { newEmail } = await prompts(
+        [
+          {
+            type: "text",
+            name: "newEmail",
+            message: "Git Email",
+            initial: "john.doe@gmail.com",
+          },
+        ],
+        {
+          onCancel: function () {
+            process.exit(1);
+          },
+        },
+      );
+
+      if (!newEmail || !executeCommand(git, [...emailArgs, newEmail]).success) {
+        error("\u2716 Failed to initialize git repository.");
+      }
+    }
+  }
+
   packageManager =
     packageManagers.length > 0 &&
     (packageManagers.find((p) => p.name === pmanager) ||
@@ -472,8 +560,7 @@ async function main() {
   const packageJSON = readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
-    console.error("\u2716 File 'package.json' doesn't exist.");
-    process.exit(1);
+    error("\u2716 File 'package.json' doesn't exist.");
   }
 
   packageJSON.name = name.toLowerCase();
@@ -498,18 +585,19 @@ async function main() {
 
   writeJSONFile(packageJSONPath, packageJSON);
 
-  console.log(blue("- Modifying 'assets/rojo.json' values."));
+  if (!existingPackageJSON?.name) {
+    console.log(blue("- Modifying 'assets/rojo.json' values."));
 
-  const projectJSONPath = path.resolve(directory, "assets", "rojo.json");
-  const projectJSON = readJSONFile(projectJSONPath);
+    const projectJSONPath = path.resolve(directory, "assets", "rojo.json");
+    const projectJSON = readJSONFile(projectJSONPath);
 
-  if (!projectJSON) {
-    console.error("\u2716 File 'assets/rojo.json' doesn't exist.");
-    process.exit(1);
+    if (!projectJSON) {
+      error("\u2716 File 'assets/rojo.json' doesn't exist.");
+    }
+
+    projectJSON.name = name;
+    writeJSONFile(projectJSONPath, projectJSON);
   }
-
-  projectJSON.name = name;
-  writeJSONFile(projectJSONPath, projectJSON);
 
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
@@ -519,28 +607,27 @@ async function main() {
       executeCommand(git, ["add", "."], directory),
       executeCommand(
         git,
-        ["commit", "-m", "📦 Initialize Repository"],
+        ["commit", "-m", "\u{1F4E6} Initialize Repository"],
         directory,
       ),
       executeCommand(git, ["branch", "-M", "main"], directory),
       executeCommand(git, ["branch", "release"], directory),
     ];
 
-    if (commands.some((c) => c !== true)) {
-      console.error("\u2716 Failed to initialize git repository.");
+    if (commands.some(({ success }) => !success)) {
+      error("\u2716 Failed to initialize git repository.");
     }
   }
 
   if (!aftman) {
     console.log(yellow("- 'aftman' not found, attempting to install."));
     await installAftman();
-    aftman = await lookpath("aftman");
+    aftman = await getAftman();
 
     if (!aftman) {
-      console.error(
+      error(
         "\u2716 Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
       );
-      process.exit(1);
     }
   }
 
@@ -554,27 +641,26 @@ async function main() {
 
     if (
       !executeCommand(packageManager.path, ["install", "--silent"], directory)
+        .success
     ) {
-      console.error(
+      error(
         `"\u2716 Failed to install dependencies using '${packageManager.name}'.`,
       );
-      process.exit(1);
     }
 
     console.log(blue(`- Building project using '${packageManager.name}'.`));
 
-    if (!executeCommand(packageManager.path, ["run", "build"], directory)) {
-      console.error(
-        `\u2716 Failed to build project using '${packageManager.name}'.`,
-      );
-      process.exit(1);
+    if (
+      !executeCommand(packageManager.path, ["run", "build"], directory).success
+    ) {
+      error(`\u2716 Failed to build project using '${packageManager.name}'.`);
     }
   }
 
   if (IDE) {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
 
-    if (!executeCommand(IDE.path, [".", "src/index.ts"], directory)) {
+    if (!executeCommand(IDE.path, [".", "src/index.ts"], directory).success) {
       console.error(`\u2716 Failed to open project in '${IDE.name}'.`);
     }
   }
