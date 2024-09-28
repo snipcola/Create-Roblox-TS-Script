@@ -195,16 +195,18 @@ async function main() {
   const root = path.resolve(__dirname, "..");
   const template = path.resolve(root, "template");
   const config = {
-    filesToForceCopy: [
+    files: [
       path.resolve(template, "assets"),
       path.resolve(template, ".eslintrc"),
-      path.resolve(template, "_gitignore"),
-      path.resolve(template, ".github"),
       path.resolve(template, "package.json"),
       path.resolve(template, "aftman.toml"),
       path.resolve(template, "tsconfig.json"),
     ],
-    filesToOptionallyCopy: [path.resolve(template, "src")],
+    optionalFiles: [path.resolve(template, "src")],
+    gitFiles: [
+      path.resolve(template, "_gitignore"),
+      path.resolve(template, ".github"),
+    ],
     packageJSONValuesToKeep: ["scripts", "dependencies", "devDependencies"],
     supportedPackageManagers: [
       {
@@ -530,27 +532,29 @@ async function main() {
 
   console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
 
-  for (const file of config.filesToForceCopy) {
+  function copy(file, folder, force = true) {
     const name = path.basename(file);
-
-    if (!initializeGit && ["_gitignore", ".github"].includes(name)) {
-      continue;
-    }
-
     const newFile = path.resolve(
-      directory,
-      name === "_gitignore" ? ".gitignore" : name,
+      folder,
+      name.startsWith("_") ? name.replace("_", ".") : name,
     );
 
-    fs.cpSync(file, newFile, { recursive: true, force: true });
+    if (force || !fs.existsSync(newFile)) {
+      fs.cpSync(file, newFile, { recursive: true, force: true });
+    }
   }
 
-  for (const file of config.filesToOptionallyCopy) {
-    const name = path.basename(file);
-    const newFile = path.resolve(directory, name);
+  for (const file of config.files) {
+    copy(file, directory);
+  }
 
-    if (!fs.existsSync(newFile)) {
-      fs.cpSync(file, newFile, { recursive: true, force: true });
+  for (const file of config.optionalFiles) {
+    copy(file, directory, false);
+  }
+
+  if (initializeGit) {
+    for (const file of config.gitFiles) {
+      copy(file, directory);
     }
   }
 
