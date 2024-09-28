@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from "os";
-import fs from "fs";
+import fs from "fs/promises";
 import url from "url";
 
 import path from "path";
@@ -10,13 +10,13 @@ import { Readable } from "stream";
 import { finished } from "stream/promises";
 
 import process from "process";
-import { spawnSync } from "child_process";
+import { spawn } from "child_process";
 
 import prompts from "prompts";
 import _yargs from "yargs";
 
 import { lookpath } from "lookpath";
-import { yellow, green, blue } from "colorette";
+import { yellow, green, blue, red } from "colorette";
 
 import temporaryDirectory from "temp-dir";
 import unzipper from "unzipper";
@@ -32,7 +32,7 @@ const {
   git: _git,
   pmanager,
   ide: _ide,
-} = yargs
+} = await yargs
   .usage("Create Roblox-TS Script")
   .alias("pd", "pdirectory")
   .describe("pdirectory", "Project Directory")
@@ -63,35 +63,60 @@ const {
   .recommendCommands()
   .strict()
   .wrap(yargs.terminalWidth())
-  .parseSync();
+  .parse();
 
-function readJSONFile(path) {
+async function fileExists(file) {
   try {
-    return JSON.parse(fs.readFileSync(path, "utf8"));
+    await fs.access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readJSONFile(path) {
+  try {
+    const contents = await fs.readFile(path, "utf8");
+    return JSON.parse(contents);
   } catch {}
 }
 
-function writeJSONFile(path, json) {
-  fs.writeFileSync(path, JSON.stringify(json, null, 2), "utf8");
+async function writeJSONFile(path, json) {
+  await fs.writeFile(path, JSON.stringify(json, null, 2), "utf8");
 }
 
 function executeCommand(command, args, cwd) {
-  const useCMD =
-    process.platform === "win32" && !command?.toLowerCase()?.endsWith(".exe");
-  const result = spawnSync(
-    useCMD ? "cmd.exe" : command,
-    useCMD ? ["/c", command, ...args] : args,
-    {
-      cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
+  return new Promise(async function (resolve) {
+    const useCMD =
+      process.platform === "win32" && !command?.toLowerCase()?.endsWith(".exe");
+    const result = await spawn(
+      useCMD ? "cmd.exe" : command,
+      useCMD ? ["/c", command, ...args] : args,
+      {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
 
-  return {
-    success: result.error === undefined,
-    output: result.stdout.toString(),
-    error: result.stderr.toString(),
-  };
+    let output = "";
+    let error = "";
+
+    result.stdout.on("data", function (data) {
+      output += data;
+    });
+
+    result.stderr.on("data", function (data) {
+      error += data;
+    });
+
+    result.on("close", function (code) {
+      resolve({
+        success: code === 0,
+        output,
+        error,
+      });
+    });
+  });
 }
 
 async function downloadFile(url, folder, name) {
@@ -147,16 +172,19 @@ async function installAftman() {
     },
   };
 
-  function getExecutable(folder) {
-    const file = fs.readdirSync(folder).shift();
+  async function getExecutable(folder) {
+    const file = (await fs.readdir(folder)).shift();
     if (!file) return false;
 
     const executable = path.resolve(folder, file);
     const platform = process.platform;
 
     if (["linux", "darwin"].includes(platform)) {
-      executeCommand("chmod", ["+x", executable]);
-      if (platform === "darwin") executeCommand("xattr", ["-cr", executable]);
+      await executeCommand("chmod", ["+x", executable]);
+
+      if (platform === "darwin") {
+        await executeCommand("xattr", ["-cr", executable]);
+      }
     }
 
     return executable;
@@ -165,25 +193,25 @@ async function installAftman() {
   let file;
   let folder;
 
-  function clean() {
-    if (file) fs.rmSync(file, { force: true });
-    if (folder) fs.rmSync(folder, { force: true, recursive: true });
+  async function clean() {
+    if (file) await fs.rm(file, { force: true });
+    if (folder) await fs.rm(folder, { force: true, recursive: true });
     return true;
   }
 
   file = await downloadFile(aftman.file(), temporaryDirectory);
-  if (!file) return !clean();
+  if (!file) return !(await clean());
 
   folder = await extractZip(file, temporaryDirectory);
-  if (!folder) return !clean();
+  if (!folder) return !(await clean());
 
-  const executable = getExecutable(folder);
-  if (!executable) return !clean();
+  const executable = await getExecutable(folder);
+  if (!executable) return !(await clean());
 
-  const { success } = executeCommand(executable, ["self-install"]);
-  if (!success) return !clean();
+  const { success } = await executeCommand(executable, ["self-install"]);
+  if (!success) return !(await clean());
 
-  return clean();
+  return await clean();
 }
 
 async function getAftman() {
@@ -198,8 +226,9 @@ async function main() {
     files: [
       path.resolve(template, "assets"),
       path.resolve(template, ".eslintrc"),
-      path.resolve(template, "package.json"),
+      path.resolve(template, ".prettierrc"),
       path.resolve(template, "aftman.toml"),
+      path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
     ],
     optionalFiles: [path.resolve(template, "src")],
@@ -235,7 +264,7 @@ async function main() {
   };
 
   function error(...args) {
-    console.error(...args);
+    console.error(red(...args));
     process.exit(1);
   }
 
@@ -256,10 +285,10 @@ async function main() {
   const packageManagers = (
     await Promise.all(
       config.supportedPackageManagers.map(function ({ name, command }) {
-        return new Promise(async function (res) {
+        return new Promise(async function (resolve) {
           const path = await lookpath(command);
-          if (path) return res({ path, name });
-          res();
+          if (path) return resolve({ path, name });
+          resolve();
         });
       }),
     )
@@ -268,10 +297,10 @@ async function main() {
   const IDEs = (
     await Promise.all(
       config.supportedIDEs.map(function ({ name, command }) {
-        return new Promise(async function (res) {
+        return new Promise(async function (resolve) {
           const path = await lookpath(command);
-          if (path) return res({ path, name });
-          res();
+          if (path) return resolve({ path, name });
+          resolve();
         });
       }),
     )
@@ -309,10 +338,10 @@ async function main() {
     error("\u2716 Not a directory.");
   }
 
-  const directoryExists = fs.existsSync(directory);
+  const directoryExists = await fileExists(directory);
 
   if (directoryExists) {
-    if (!fs.statSync(directory).isDirectory()) {
+    if (!(await fs.stat(directory)).isDirectory()) {
       error("\u2716 Not a directory.");
     }
 
@@ -320,12 +349,13 @@ async function main() {
   }
 
   const existingPackageJSON =
-    directoryExists && readJSONFile(path.resolve(directory, "package.json"));
+    directoryExists &&
+    (await readJSONFile(path.resolve(directory, "package.json")));
 
   const hasGitDirectory =
     directoryExists &&
-    fs.existsSync(path.resolve(directory, ".git")) &&
-    fs.statSync(path.resolve(directory, ".git")).isDirectory();
+    (await fileExists(path.resolve(directory, ".git"))) &&
+    (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
 
   function nameValidation(value) {
     if (!value) return "Name cannot be empty.";
@@ -357,7 +387,7 @@ async function main() {
       const validation = func(value);
 
       if (validation !== true) {
-        console.error(`\u2716 ${validation}`);
+        console.error(red(`\u2716 ${validation}`));
         return validation;
       }
     }
@@ -463,8 +493,8 @@ async function main() {
     const nameArgs = ["config", "--global", "user.name"];
     const emailArgs = ["config", "--global", "user.email"];
 
-    const { output: name } = executeCommand(git, nameArgs);
-    const { output: email } = executeCommand(git, emailArgs);
+    const { output: name } = await executeCommand(git, nameArgs);
+    const { output: email } = await executeCommand(git, emailArgs);
 
     if (!name) {
       console.log(yellow("- Name not set for 'git'."));
@@ -485,7 +515,10 @@ async function main() {
         },
       );
 
-      if (!newName || !executeCommand(git, [...nameArgs, newName]).success) {
+      if (
+        !newName ||
+        !(await executeCommand(git, [...nameArgs, newName])).success
+      ) {
         error("\u2716 Failed to initialize git repository.");
       }
     }
@@ -509,7 +542,10 @@ async function main() {
         },
       );
 
-      if (!newEmail || !executeCommand(git, [...emailArgs, newEmail]).success) {
+      if (
+        !newEmail ||
+        !(await executeCommand(git, [...emailArgs, newEmail])).success
+      ) {
         error("\u2716 Failed to initialize git repository.");
       }
     }
@@ -527,41 +563,33 @@ async function main() {
 
   if (!directoryExists) {
     console.log(blue(`- Creating '${path.basename(directory)}'.`));
-    fs.mkdirSync(directory, { recursive: true });
+    await fs.mkdir(directory, { recursive: true });
   }
 
   console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
 
-  function copy(file, folder, force = true) {
+  async function copy(file, folder, force = true) {
     const name = path.basename(file);
     const newFile = path.resolve(
       folder,
       name.startsWith("_") ? name.replace("_", ".") : name,
     );
 
-    if (force || !fs.existsSync(newFile)) {
-      fs.cpSync(file, newFile, { recursive: true, force: true });
+    if (force || !(await fileExists(newFile))) {
+      await fs.cp(file, newFile, { recursive: true, force: true });
     }
   }
 
-  for (const file of config.files) {
-    copy(file, directory);
-  }
-
-  for (const file of config.optionalFiles) {
-    copy(file, directory, false);
-  }
-
-  if (initializeGit) {
-    for (const file of config.gitFiles) {
-      copy(file, directory);
-    }
-  }
+  await Promise.all([
+    ...config.files.map((f) => copy(f, directory)),
+    ...config.optionalFiles.map((f) => copy(f, directory, false)),
+    ...(initializeGit ? config.gitFiles.map((f) => copy(f, directory)) : []),
+  ]);
 
   console.log(blue("- Modifying 'package.json' values."));
 
   const packageJSONPath = path.resolve(directory, "package.json");
-  const packageJSON = readJSONFile(packageJSONPath);
+  const packageJSON = await readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
     error("\u2716 File 'package.json' doesn't exist.");
@@ -587,35 +615,52 @@ async function main() {
     }
   }
 
-  writeJSONFile(packageJSONPath, packageJSON);
+  await writeJSONFile(packageJSONPath, packageJSON);
+
+  const rojo = path.resolve(directory, "assets", "rojo");
+  const rojoName = "default.project.json";
 
   if (!existingPackageJSON?.name) {
-    console.log(blue("- Modifying 'assets/rojo.json' values."));
+    console.log(blue(`- Modifying 'assets/rojo/${rojoName}' values.`));
 
-    const projectJSONPath = path.resolve(directory, "assets", "rojo.json");
-    const projectJSON = readJSONFile(projectJSONPath);
+    const projectJSONPath = path.resolve(rojo, rojoName);
+    const projectJSON = await readJSONFile(projectJSONPath);
 
     if (!projectJSON) {
-      error("\u2716 File 'assets/rojo.json' doesn't exist.");
+      error(`\u2716 File 'assets/rojo/${rojoName}' doesn't exist.`);
     }
 
     projectJSON.name = name;
-    writeJSONFile(projectJSONPath, projectJSON);
+    await writeJSONFile(projectJSONPath, projectJSON);
+  }
+
+  if (!existingPackageJSON?.name) {
+    console.log(blue(`- Modifying 'assets/rojo/studio/${rojoName}' values.`));
+
+    const projectJSONPath = path.resolve(rojo, "studio", rojoName);
+    const projectJSON = await readJSONFile(projectJSONPath);
+
+    if (!projectJSON) {
+      error(`\u2716 File 'assets/rojo/studio/${rojoName}' doesn't exist.`);
+    }
+
+    projectJSON.name = name;
+    await writeJSONFile(projectJSONPath, projectJSON);
   }
 
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
 
     const commands = [
-      executeCommand(git, ["init"], directory),
-      executeCommand(git, ["add", "."], directory),
-      executeCommand(
+      await executeCommand(git, ["init"], directory),
+      await executeCommand(git, ["add", "."], directory),
+      await executeCommand(
         git,
         ["commit", "-m", "\u{1F4E6} Initialize Repository"],
         directory,
       ),
-      executeCommand(git, ["branch", "-M", "main"], directory),
-      executeCommand(git, ["branch", "release"], directory),
+      await executeCommand(git, ["branch", "-M", "main"], directory),
+      await executeCommand(git, ["branch", "release"], directory),
     ];
 
     if (commands.some(({ success }) => !success)) {
@@ -636,7 +681,13 @@ async function main() {
   }
 
   console.log(blue(`- Installing dependencies using 'aftman'.`));
-  executeCommand(aftman, ["install", "--no-trust-check"], directory);
+  await executeCommand(aftman, ["install", "--no-trust-check"], directory);
+
+  console.log(blue(`- Installing Rojo plugin for Roblox Studio.`));
+
+  if (!(await executeCommand("rojo", ["plugin", "install"]))) {
+    console.error(red("\u2716 Failed to install Rojo plugin."));
+  }
 
   if (packageManager) {
     console.log(
@@ -644,8 +695,13 @@ async function main() {
     );
 
     if (
-      !executeCommand(packageManager.path, ["install", "--silent"], directory)
-        .success
+      !(
+        await executeCommand(
+          packageManager.path,
+          ["install", "--silent"],
+          directory,
+        )
+      ).success
     ) {
       error(
         `"\u2716 Failed to install dependencies using '${packageManager.name}'.`,
@@ -655,7 +711,8 @@ async function main() {
     console.log(blue(`- Building project using '${packageManager.name}'.`));
 
     if (
-      !executeCommand(packageManager.path, ["run", "build"], directory).success
+      !(await executeCommand(packageManager.path, ["run", "build"], directory))
+        .success
     ) {
       error(`\u2716 Failed to build project using '${packageManager.name}'.`);
     }
@@ -664,8 +721,11 @@ async function main() {
   if (IDE) {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
 
-    if (!executeCommand(IDE.path, [".", "src/index.ts"], directory).success) {
-      console.error(`\u2716 Failed to open project in '${IDE.name}'.`);
+    if (
+      !(await executeCommand(IDE.path, [".", "src/index.ts"], directory))
+        .success
+    ) {
+      console.error(red(`\u2716 Failed to open project in '${IDE.name}'.`));
     }
   }
 

@@ -4,4 +4,6 @@ package-lock.json
 yarn.lock
 .DS_Store
 
-template/out
+/template/out
+/template/script.lua
+/template/assets/rojo/studio/script.client.lua
