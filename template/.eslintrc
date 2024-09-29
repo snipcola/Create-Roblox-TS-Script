@@ -34,6 +34,7 @@
     "@typescript-eslint/no-namespace": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/no-empty-function": "warn",
+    "roblox-ts/lua-truthiness": "off",
     "prefer-const": [
       "warn",
       {
