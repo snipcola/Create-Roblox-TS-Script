@@ -872,7 +872,7 @@ async function main() {
       await executeCommand(git, ["add", "."], directory),
       await executeCommand(
         git,
-        ["commit", "-m", "\u{1F4E6} Initialize Repository"],
+        ["commit", "-m", "\u{1F680} Initialize Repository"],
         directory,
       ),
       await executeCommand(git, ["branch", "-M", "main"], directory),
