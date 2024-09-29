@@ -99,6 +99,83 @@ async function writeJSONFile(path, json) {
   await fs.writeFile(path, json, "utf8");
 }
 
+function preserveObject(object, existingObject, { entrypoint, keys, force }) {
+  function isValid(values, any) {
+    return !values[any ? "every" : "some"]((v) =>
+      [undefined, null].includes(v),
+    );
+  }
+
+  function isObject(object) {
+    return typeof object === "object" && isValid([object]);
+  }
+
+  function getObject(object) {
+    return isObject(object) && (object[entrypoint] || object || {});
+  }
+
+  function getObjectValue(object, key) {
+    if (object.hasOwnProperty(key)) {
+      const value = object[key];
+      return isValid([value]) ? value : undefined;
+    }
+  }
+
+  function traverse(object, existingObject, keys, force) {
+    let newObject = {};
+
+    const allKeys = new Set([
+      ...(keys ? Object.values(keys) : []),
+      ...Object.keys(object),
+      ...Object.keys(existingObject),
+    ]);
+
+    for (const key of allKeys) {
+      const objectValue = getObjectValue(object, key);
+      const existingValue = getObjectValue(existingObject, key);
+
+      const oneValueExists = isValid([objectValue, existingValue], true);
+      const bothValuesExist = isValid([objectValue, existingValue]);
+
+      const forceValue = bothValuesExist && force?.includes(key);
+
+      if (!oneValueExists) {
+        continue;
+      } else if (
+        !existingValue ||
+        (bothValuesExist && typeof objectValue !== typeof existingValue)
+      ) {
+        newObject[key] = objectValue;
+      } else if (Array.isArray(objectValue) && Array.isArray(existingValue)) {
+        newObject[key] = Array.from(
+          new Set(
+            forceValue
+              ? [...existingValue, ...objectValue]
+              : [...objectValue, ...existingValue],
+          ),
+        );
+        continue;
+      } else if (isObject(objectValue)) {
+        newObject[key] = forceValue
+          ? traverse(existingValue, objectValue)
+          : traverse(objectValue, existingValue);
+      } else {
+        newObject[key] = forceValue ? objectValue : existingValue;
+      }
+    }
+
+    return newObject;
+  }
+
+  const _object = getObject(object);
+  const _existingObject = getObject(existingObject);
+
+  const newObject = traverse(_object, _existingObject, keys, force);
+  if (entrypoint) object[entrypoint] = newObject;
+
+  return entrypoint ? object : newObject;
+}
+
 function executeCommand(command, args, cwd) {
   return new Promise(async function (resolve) {
     const useCMD =
@@ -250,7 +327,69 @@ async function main() {
       path.resolve(template, "_gitignore"),
       path.resolve(template, ".github"),
     ],
-    packageJSONValuesToKeep: ["scripts", "dependencies", "devDependencies"],
+    packageJSON: {
+      keys: [
+        "name",
+        "author",
+        "version",
+        "description",
+        "keywords",
+        "license",
+        "repository",
+        "type",
+        "main",
+        "bin",
+        "files",
+        "private",
+        "scripts",
+        "dependencies",
+        "devDependencies",
+        "optionalDependencies",
+        "peerDependencies",
+        "engines",
+        "config",
+      ],
+      force: ["type", "scripts", "devDependencies"],
+    },
+    tsConfigJSON: {
+      entrypoint: "compilerOptions",
+      keys: [
+        "allowSyntheticDefaultImports",
+        "downlevelIteration",
+        "jsx",
+        "jsxFactory",
+        "jsxFragmentFactory",
+        "module",
+        "moduleResolution",
+        "moduleDetection",
+        "noLib",
+        "resolveJsonModule",
+        "strict",
+        "target",
+        "typeRoots",
+        "rootDir",
+        "outDir",
+        "baseUrl",
+        "incremental",
+        "tsBuildInfoFile",
+      ],
+      force: [
+        "module",
+        "moduleResolution",
+        "moduleDetection",
+        "noLib",
+        "target",
+        "typeRoots",
+        "rootDir",
+        "outDir",
+        "baseUrl",
+        "tsBuildInfoFile",
+      ],
+    },
+    rojoJSON: {
+      keys: ["name", "globIgnorePaths", "tree"],
+      force: ["globIgnorePaths", "tree"],
+    },
     supportedPackageManagers: [
       {
         name: "PNPM",
@@ -394,6 +533,10 @@ async function main() {
   const existingPackageJSON =
     directoryExists &&
     (await readJSONFile(path.resolve(directory, "package.json")));
+
+  const existingTSConfigJSON =
+    directoryExists &&
+    (await readJSONFile(path.resolve(directory, "tsconfig.json")));
 
   const rojoName = "default.project.json";
   const projectJSONs = [
@@ -658,7 +801,7 @@ async function main() {
   console.log(blue("- Modifying 'package.json' values."));
 
   const packageJSONPath = path.resolve(directory, "package.json");
-  const packageJSON = await readJSONFile(packageJSONPath);
+  let packageJSON = await readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
     error("\u2716 File 'package.json' doesn't exist.");
@@ -670,34 +813,51 @@ async function main() {
 
   if (existingPackageJSON) {
     console.log(blue("- Preserving previous 'package.json' values."));
-
-    for (const value of config.packageJSONValuesToKeep) {
-      if (existingPackageJSON[value]) {
-        if (!packageJSON[value]) packageJSON[value] = {};
-
-        for (const key in existingPackageJSON[value]) {
-          if (!packageJSON[value].hasOwnProperty(key)) {
-            packageJSON[value][key] = existingPackageJSON[value][key];
-          }
-        }
-      }
-    }
+    packageJSON = preserveObject(
+      packageJSON,
+      existingPackageJSON,
+      config.packageJSON,
+    );
   }
 
   await writeJSONFile(packageJSONPath, packageJSON);
+
+  if (existingTSConfigJSON) {
+    const tsConfigJSONPath = path.resolve(directory, "tsconfig.json");
+    let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
+
+    if (!tsConfigJSON) {
+      error("\u2716 File 'tsconfig.json' doesn't exist.");
+    }
+
+    console.log(blue("- Preserving previous 'tsconfig.json' values."));
+    tsConfigJSON = preserveObject(
+      tsConfigJSON,
+      existingTSConfigJSON,
+      config.tsConfigJSON,
+    );
+
+    await writeJSONFile(tsConfigJSONPath, tsConfigJSON);
+  }
 
   await Promise.all(
     projectJSONs.map(async function ({ file, studio, existing }) {
       const _path = `assets/rojo${studio ? "/studio" : ""}/${rojoName}`;
       console.log(blue(`- Modifying '${_path}' values.`));
 
-      const projectJSON = await readJSONFile(file);
+      let projectJSON = await readJSONFile(file);
 
       if (!projectJSON) {
         error(`\u2716 File '${_path}' doesn't exist.`);
       }
 
       projectJSON.name = pname || existing?.name || name;
+
+      if (existing) {
+        console.log(blue(`- Preserving previous '${_path}' values.`));
+        projectJSON = preserveObject(projectJSON, existing, config.rojoJSON);
+      }
+
       await writeJSONFile(file, projectJSON);
     }),
   );
