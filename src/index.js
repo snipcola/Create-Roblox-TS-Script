@@ -1,28 +1,23 @@
 #!/usr/bin/env node
-import os from "os";
-import fs from "fs/promises";
-import url from "url";
+const os = require("os");
+const fs = require("fs/promises");
 
-import path from "path";
-import { randomUUID } from "crypto";
+const path = require("path");
+const { randomUUID } = require("crypto");
 
-import { Readable } from "stream";
-import { finished } from "stream/promises";
+const { Readable } = require("stream");
+const { finished } = require("stream/promises");
 
-import process from "process";
-import { spawn } from "child_process";
+const process = require("process");
+const { spawn } = require("child_process");
 
-import prompts from "prompts";
-import _yargs from "yargs";
+const prompts = require("prompts");
+const yargs = require("yargs");
 
-import { lookpath } from "lookpath";
-import { yellow, green, blue, red } from "colorette";
+const { lookpath } = require("lookpath");
+const { yellow, green, blue, red } = require("colorette");
 
-import temporaryDirectory from "temp-dir";
-import unzipper from "unzipper";
-
-const yargs = _yargs(process.argv.slice(2));
-const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const unzipper = require("unzipper");
 
 const {
   pdirectory,
@@ -32,7 +27,7 @@ const {
   git: _git,
   pmanager,
   ide: _ide,
-} = await yargs
+} = yargs
   .usage("Create Roblox-TS Script")
   .option("pdirectory", {
     alias: "pd",
@@ -76,7 +71,7 @@ const {
   .recommendCommands()
   .strict()
   .wrap(yargs.terminalWidth())
-  .parse();
+  .parseSync();
 
 async function fileExists(file) {
   try {
@@ -237,7 +232,7 @@ async function extractZip(file, folder, name) {
   }
 }
 
-async function installAftman() {
+async function installAftman(temporaryDirectory) {
   const aftman = {
     repo: "LPGhatguy/aftman",
     version: "v0.3.0",
@@ -311,6 +306,8 @@ async function getAftman() {
 }
 
 async function main() {
+  const { default: temporaryDirectory } = await import("temp-dir");
+
   const root = path.resolve(__dirname, "..");
   const template = path.resolve(root, "template");
   const config = {
@@ -886,7 +883,7 @@ async function main() {
 
   if (!aftman) {
     console.log(yellow("- 'aftman' not found, attempting to install."));
-    await installAftman();
+    await installAftman(temporaryDirectory);
     aftman = await getAftman();
 
     if (!aftman) {

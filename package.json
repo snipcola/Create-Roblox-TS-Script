@@ -1,8 +1,7 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": "Snipcola",
-  "type": "module",
   "keywords": [
     "roblox",
     "typescript",
