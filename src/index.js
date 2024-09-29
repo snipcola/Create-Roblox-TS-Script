@@ -468,7 +468,7 @@ async function main() {
   if (
     _ide &&
     !IDEs.find(
-      (i) => path.basename(i.path)?.toLowerCase() === _ide.toLowerCase(),
+      (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
     )
   ) {
     error(`\u2716 '${_ide}' not available.`);
@@ -765,7 +765,7 @@ async function main() {
     IDEs.length > 0 &&
     ((_ide &&
       IDEs.find(
-        (i) => path.basename(i.path)?.toLowerCase() === _ide.toLowerCase(),
+        (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
       )) ||
       IDE ||
       IDEs[0]);
