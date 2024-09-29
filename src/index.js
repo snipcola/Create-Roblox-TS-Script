@@ -338,19 +338,56 @@ async function main() {
     error("\u2716 Not a directory.");
   }
 
-  const directoryExists = await fileExists(directory);
+  let directoryExists = await fileExists(directory);
 
   if (directoryExists) {
     if (!(await fs.stat(directory)).isDirectory()) {
       error("\u2716 Not a directory.");
     }
 
-    console.log(yellow("- Directory already exists, attempting anyway."));
+    const { deleteDirectory } = await prompts(
+      [
+        {
+          type: "confirm",
+          name: "deleteDirectory",
+          message: "Directory already exists, delete it?",
+          initial: false,
+        },
+      ],
+      {
+        onCancel: function () {
+          process.exit(1);
+        },
+      },
+    );
+
+    if (deleteDirectory) {
+      await fs.rm(directory, { force: true, recursive: true });
+      directoryExists = false;
+    }
   }
 
   const existingPackageJSON =
     directoryExists &&
     (await readJSONFile(path.resolve(directory, "package.json")));
+
+  const rojoName = "default.project.json";
+  const projectJSONs = [
+    {
+      file: path.resolve(directory, "assets", "rojo", rojoName),
+      studio: false,
+    },
+    {
+      file: path.resolve(directory, "assets", "rojo", "studio", rojoName),
+      studio: true,
+    },
+  ];
+
+  if (directoryExists) {
+    await Promise.all(
+      projectJSONs.map(async (p) => (p.existing = await readJSONFile(p.file))),
+    );
+  }
 
   const hasGitDirectory =
     directoryExists &&
@@ -617,36 +654,21 @@ async function main() {
 
   await writeJSONFile(packageJSONPath, packageJSON);
 
-  const rojo = path.resolve(directory, "assets", "rojo");
-  const rojoName = "default.project.json";
+  await Promise.all(
+    projectJSONs.map(async function ({ file, studio, existing }) {
+      const _path = `assets/rojo${studio ? "/studio" : ""}/${rojoName}`;
+      console.log(blue(`- Modifying '${_path}' values.`));
 
-  if (!existingPackageJSON?.name) {
-    console.log(blue(`- Modifying 'assets/rojo/${rojoName}' values.`));
+      const projectJSON = await readJSONFile(file);
 
-    const projectJSONPath = path.resolve(rojo, rojoName);
-    const projectJSON = await readJSONFile(projectJSONPath);
+      if (!projectJSON) {
+        error(`\u2716 File '${_path}' doesn't exist.`);
+      }
 
-    if (!projectJSON) {
-      error(`\u2716 File 'assets/rojo/${rojoName}' doesn't exist.`);
-    }
-
-    projectJSON.name = name;
-    await writeJSONFile(projectJSONPath, projectJSON);
-  }
-
-  if (!existingPackageJSON?.name) {
-    console.log(blue(`- Modifying 'assets/rojo/studio/${rojoName}' values.`));
-
-    const projectJSONPath = path.resolve(rojo, "studio", rojoName);
-    const projectJSON = await readJSONFile(projectJSONPath);
-
-    if (!projectJSON) {
-      error(`\u2716 File 'assets/rojo/studio/${rojoName}' doesn't exist.`);
-    }
-
-    projectJSON.name = name;
-    await writeJSONFile(projectJSONPath, projectJSON);
-  }
+      projectJSON.name = pname || existing?.name || name;
+      await writeJSONFile(file, projectJSON);
+    }),
+  );
 
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
