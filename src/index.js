@@ -795,7 +795,9 @@ async function main() {
   await Promise.all([
     ...config.files.map((f) => copy(f, directory)),
     ...config.optionalFiles.map((f) => copy(f, directory, false)),
-    ...(hasGitDirectory ? config.gitFiles.map((f) => copy(f, directory)) : []),
+    ...(hasGitDirectory || initializeGit
+      ? config.gitFiles.map((f) => copy(f, directory))
+      : []),
   ]);
 
   console.log(blue("- Modifying 'package.json' values."));
