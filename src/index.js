@@ -21,7 +21,7 @@ import { yellow, green, blue, red } from "colorette";
 import temporaryDirectory from "temp-dir";
 import unzipper from "unzipper";
 
-const yargs = _yargs();
+const yargs = _yargs(process.argv.slice(2));
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 const {
@@ -34,28 +34,41 @@ const {
   ide: _ide,
 } = await yargs
   .usage("Create Roblox-TS Script")
-  .alias("pd", "pdirectory")
-  .describe("pdirectory", "Project Directory")
-  .string("pdirectory")
-  .alias("pn", "pname")
-  .describe("pname", "Project Name")
-  .string("pname")
-  .alias("pa", "pauthor")
-  .describe("pauthor", "Project Author")
-  .string("pauthor")
-  .alias("pv", "pversion")
-  .describe("pversion", "Project Version")
-  .string("pversion")
-  .alias("g", "git")
-  .describe("git", "Initialize Git Repo")
-  .boolean("git")
-  .alias("pm", "pmanager")
-  .describe("pmanager", "Package Manager")
-  .string("pmanager")
-  .alias("i", "ide")
-  .describe("ide", "IDE")
-  .string("ide")
-  .help("help")
+  .option("pdirectory", {
+    alias: "pd",
+    describe: "Project Directory",
+    type: "string",
+  })
+  .option("pname", {
+    alias: "pn",
+    describe: "Project Name",
+    type: "string",
+  })
+  .option("pauthor", {
+    alias: "pa",
+    describe: "Project Author",
+    type: "string",
+  })
+  .option("pversion", {
+    alias: "pv",
+    describe: "Project Version",
+    type: "string",
+  })
+  .option("git", {
+    alias: "g",
+    describe: "Initialize Git Repo",
+    type: "boolean",
+  })
+  .option("pmanager", {
+    alias: "pm",
+    describe: "Package Manager",
+    type: "string",
+  })
+  .option("ide", {
+    alias: "i",
+    describe: "IDE",
+    type: "string",
+  })
   .alias("h", "help")
   .describe("help", "Show Commands")
   .alias("v", "version")
@@ -82,7 +95,8 @@ async function readJSONFile(path) {
 }
 
 async function writeJSONFile(path, json) {
-  await fs.writeFile(path, JSON.stringify(json, null, 2), "utf8");
+  json = `${JSON.stringify(json, null, 2)}\n`;
+  await fs.writeFile(path, json, "utf8");
 }
 
 function executeCommand(command, args, cwd) {
@@ -306,11 +320,21 @@ async function main() {
     )
   ).filter((p) => p !== undefined);
 
-  if (pmanager && !packageManagers.find((n) => n.name === pmanager)) {
+  if (
+    pmanager &&
+    !packageManagers.find(
+      (n) => n.name?.toLowerCase() === pmanager.toLowerCase(),
+    )
+  ) {
     error(`\u2716 '${pmanager}' not available.`);
   }
 
-  if (_ide && !IDEs.find((i) => path.basename(i.path) === _ide)) {
+  if (
+    _ide &&
+    !IDEs.find(
+      (i) => path.basename(i.path)?.toLowerCase() === _ide.toLowerCase(),
+    )
+  ) {
     error(`\u2716 '${_ide}' not available.`);
   }
 
@@ -340,7 +364,7 @@ async function main() {
 
   let directoryExists = await fileExists(directory);
 
-  if (directoryExists) {
+  if (directoryExists && !pdirectory) {
     if (!(await fs.stat(directory)).isDirectory()) {
       error("\u2716 Not a directory.");
     }
@@ -590,13 +614,21 @@ async function main() {
 
   packageManager =
     packageManagers.length > 0 &&
-    (packageManagers.find((p) => p.name === pmanager) ||
+    ((pmanager &&
+      packageManagers.find(
+        (p) => p.name?.toLowerCase() === pmanager.toLowerCase(),
+      )) ||
       packageManager ||
       packageManagers[0]);
 
   IDE =
     IDEs.length > 0 &&
-    (IDEs.find((i) => path.basename(i.path) === _ide) || IDE || IDEs[0]);
+    ((_ide &&
+      IDEs.find(
+        (i) => path.basename(i.path)?.toLowerCase() === _ide.toLowerCase(),
+      )) ||
+      IDE ||
+      IDEs[0]);
 
   if (!directoryExists) {
     console.log(blue(`- Creating '${path.basename(directory)}'.`));
