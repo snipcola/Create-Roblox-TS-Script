@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const os = require("os");
 const fs = require("fs/promises");
+const { createWriteStream } = require("fs");
 
 const path = require("path");
 const { randomUUID } = require("crypto");
@@ -211,7 +212,7 @@ async function downloadFile(url, folder, name) {
     if (!response.ok) return false;
 
     const filePath = path.resolve(folder, name || randomUUID());
-    const fileStream = fs.createWriteStream(filePath, { flags: "wx" });
+    const fileStream = createWriteStream(filePath, { flags: "wx" });
 
     await finished(Readable.fromWeb(response.body).pipe(fileStream));
     return filePath;
@@ -413,20 +414,77 @@ async function main() {
     ],
   };
 
-  function error(...args) {
-    console.error(red(...args));
-    process.exit(1);
+  let directory;
+  let createdDirectory = false;
+
+  async function error(exit, deleteDirectory, message) {
+    if (message) {
+      console.error(red(message));
+    }
+
+    if (
+      deleteDirectory &&
+      directory &&
+      createdDirectory &&
+      (await fileExists(directory)) &&
+      (await fs.stat(directory)).isDirectory()
+    ) {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
+
+    if (exit) {
+      process.exit(1);
+    }
   }
+
+  function nameValidation(value) {
+    if (!value) return "Name cannot be empty.";
+    if (!/^[a-zA-Z0-9-_]+$/.test(value))
+      return "Name is formatted incorrectly.";
+    return true;
+  }
+
+  function authorValidation(value) {
+    if (!value) return "Author cannot be empty.";
+    if (!/^[a-zA-Z0-9-_@.]+$/.test(value))
+      return "Author is formatted incorrectly.";
+    return true;
+  }
+
+  function versionValidation(value) {
+    if (!value) return "Version cannot be empty.";
+    if (
+      !/^\d+(\.\d+){0,2}(\.\d+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(
+        value,
+      )
+    )
+      return "Version is formatted incorrectly (x.y.z).";
+    return true;
+  }
+
+  async function checkValidation(value, func) {
+    if (value) {
+      const validation = func(value);
+
+      if (validation !== true) {
+        await error(true, false, `\u2716 ${validation}`);
+      }
+    }
+  }
+
+  await checkValidation(pname, nameValidation);
+  await checkValidation(pauthor, authorValidation);
+  await checkValidation(pversion, versionValidation);
 
   if (
     pmanager &&
     !config.supportedPackageManagers.find((p) => p.command === pmanager)
   ) {
-    error(`\u2716 '${pmanager}' not supported.`);
+    await error(true, false, `\u2716 '${pmanager}' not supported.`);
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    error(`\u2716 '${_ide}' not supported.`);
+    await error(true, false, `\u2716 '${_ide}' not supported.`);
   }
 
   const git = await lookpath("git");
@@ -462,7 +520,7 @@ async function main() {
       (n) => n.name?.toLowerCase() === pmanager.toLowerCase(),
     )
   ) {
-    error(`\u2716 '${pmanager}' not available.`);
+    await error(true, false, `\u2716 '${pmanager}' not available.`);
   }
 
   if (
@@ -471,10 +529,10 @@ async function main() {
       (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
     )
   ) {
-    error(`\u2716 '${_ide}' not available.`);
+    await error(true, false, `\u2716 '${_ide}' not available.`);
   }
 
-  let { directory } = pdirectory
+  const _directory = pdirectory
     ? { directory: pdirectory }
     : await prompts(
         [
@@ -486,23 +544,21 @@ async function main() {
           },
         ],
         {
-          onCancel: function () {
-            process.exit(1);
-          },
+          onCancel: async () => await error(true, false),
         },
       );
 
-  directory = path.resolve(directory);
+  directory = path.resolve(_directory.directory);
 
   if (path.extname(directory) !== "") {
-    error("\u2716 Not a directory.");
+    await error(true, false, "\u2716 Not a directory.");
   }
 
   let directoryExists = await fileExists(directory);
 
   if (directoryExists && !pdirectory) {
     if (!(await fs.stat(directory)).isDirectory()) {
-      error("\u2716 Not a directory.");
+      await error(true, false, "\u2716 Not a directory.");
     }
 
     const { deleteDirectory } = await prompts(
@@ -515,9 +571,7 @@ async function main() {
         },
       ],
       {
-        onCancel: function () {
-          process.exit(1);
-        },
+        onCancel: async () => await error(true, false),
       },
     );
 
@@ -557,52 +611,6 @@ async function main() {
     directoryExists &&
     (await fileExists(path.resolve(directory, ".git"))) &&
     (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
-
-  function nameValidation(value) {
-    if (!value) return "Name cannot be empty.";
-    if (!/^[a-zA-Z0-9-_]+$/.test(value))
-      return "Name is formatted incorrectly.";
-    return true;
-  }
-
-  function authorValidation(value) {
-    if (!value) return "Author cannot be empty.";
-    if (!/^[a-zA-Z0-9-_@.]+$/.test(value))
-      return "Author is formatted incorrectly.";
-    return true;
-  }
-
-  function versionValidation(value) {
-    if (!value) return "Version cannot be empty.";
-    if (
-      !/^\d+(\.\d+){0,2}(\.\d+)?(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(
-        value,
-      )
-    )
-      return "Version is formatted incorrectly (x.y.z).";
-    return true;
-  }
-
-  function checkValidation(value, func) {
-    if (value) {
-      const validation = func(value);
-
-      if (validation !== true) {
-        console.error(red(`\u2716 ${validation}`));
-        return validation;
-      }
-    }
-  }
-
-  const validations = [
-    checkValidation(pname, nameValidation),
-    checkValidation(pauthor, authorValidation),
-    checkValidation(pversion, versionValidation),
-  ];
-
-  if (validations.some((v) => v !== undefined)) {
-    return;
-  }
 
   let { name, author, version, initializeGit, packageManager, IDE } =
     await prompts(
@@ -678,9 +686,7 @@ async function main() {
         ],
       ],
       {
-        onCancel: function () {
-          process.exit(1);
-        },
+        onCancel: async () => await error(true, true),
       },
     );
 
@@ -710,9 +716,7 @@ async function main() {
           },
         ],
         {
-          onCancel: function () {
-            process.exit(1);
-          },
+          onCancel: async () => await error(true, true),
         },
       );
 
@@ -720,7 +724,7 @@ async function main() {
         !newName ||
         !(await executeCommand(git, [...nameArgs, newName])).success
       ) {
-        error("\u2716 Failed to initialize git repository.");
+        await error(true, true, "\u2716 Failed to set git name.");
       }
     }
 
@@ -737,9 +741,7 @@ async function main() {
           },
         ],
         {
-          onCancel: function () {
-            process.exit(1);
-          },
+          onCancel: async () => await error(true, true),
         },
       );
 
@@ -747,7 +749,7 @@ async function main() {
         !newEmail ||
         !(await executeCommand(git, [...emailArgs, newEmail])).success
       ) {
-        error("\u2716 Failed to initialize git repository.");
+        await error(true, true, "\u2716 Failed to set git email.");
       }
     }
   }
@@ -773,6 +775,7 @@ async function main() {
   if (!directoryExists) {
     console.log(blue(`- Creating '${path.basename(directory)}'.`));
     await fs.mkdir(directory, { recursive: true });
+    createdDirectory = true;
   }
 
   console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
@@ -803,7 +806,7 @@ async function main() {
   let packageJSON = await readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
-    error("\u2716 File 'package.json' doesn't exist.");
+    await error(true, true, "\u2716 File 'package.json' doesn't exist.");
   }
 
   packageJSON.name = name.toLowerCase();
@@ -826,7 +829,7 @@ async function main() {
     let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
 
     if (!tsConfigJSON) {
-      error("\u2716 File 'tsconfig.json' doesn't exist.");
+      await error(true, true, "\u2716 File 'tsconfig.json' doesn't exist.");
     }
 
     console.log(blue("- Preserving previous 'tsconfig.json' values."));
@@ -847,7 +850,7 @@ async function main() {
       let projectJSON = await readJSONFile(file);
 
       if (!projectJSON) {
-        error(`\u2716 File '${_path}' doesn't exist.`);
+        await error(true, true, `\u2716 File '${_path}' doesn't exist.`);
       }
 
       projectJSON.name = pname || existing?.name || name;
@@ -877,7 +880,7 @@ async function main() {
     ];
 
     if (commands.some(({ success }) => !success)) {
-      error("\u2716 Failed to initialize git repository.");
+      await error(true, true, "\u2716 Failed to initialize git repository.");
     }
   }
 
@@ -887,7 +890,9 @@ async function main() {
     aftman = await getAftman();
 
     if (!aftman) {
-      error(
+      await error(
+        true,
+        true,
         "\u2716 Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
       );
     }
@@ -899,7 +904,7 @@ async function main() {
   console.log(blue(`- Installing Rojo plugin for Roblox Studio.`));
 
   if (!(await executeCommand("rojo", ["plugin", "install"]))) {
-    console.error(red("\u2716 Failed to install Rojo plugin."));
+    await error(false, false, "\u2716 Failed to install Rojo plugin.");
   }
 
   if (packageManager) {
@@ -916,7 +921,9 @@ async function main() {
         )
       ).success
     ) {
-      error(
+      await error(
+        true,
+        true,
         `"\u2716 Failed to install dependencies using '${packageManager.name}'.`,
       );
     }
@@ -927,7 +934,11 @@ async function main() {
       !(await executeCommand(packageManager.path, ["run", "build"], directory))
         .success
     ) {
-      error(`\u2716 Failed to build project using '${packageManager.name}'.`);
+      await error(
+        true,
+        true,
+        `\u2716 Failed to build project using '${packageManager.name}'.`,
+      );
     }
   }
 
@@ -938,7 +949,11 @@ async function main() {
       !(await executeCommand(IDE.path, [".", "src/index.ts"], directory))
         .success
     ) {
-      console.error(red(`\u2716 Failed to open project in '${IDE.name}'.`));
+      await error(
+        false,
+        false,
+        `\u2716 Failed to open project in '${IDE.name}'.`,
+      );
     }
   }
 
