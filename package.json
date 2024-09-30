@@ -1,7 +1,11 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": "Snipcola",
+  "repository": {
+    "type": "git",
+    "url": "https://git.snipcola.com/snipcola/Create-Roblox-TS-Script.git"
+  },
   "keywords": [
     "roblox",
     "typescript",
