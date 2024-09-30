@@ -722,7 +722,7 @@ async function main() {
       IDEs[0]);
 
   const { openInIDE } =
-    !openide && IDE
+    openide === undefined && IDE
       ? await prompts(
           [
             {
