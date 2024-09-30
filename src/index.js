@@ -28,6 +28,7 @@ const {
   git: _git,
   pmanager,
   ide: _ide,
+  openide,
 } = yargs
   .usage("Create Roblox-TS Script")
   .option("pdirectory", {
@@ -64,6 +65,11 @@ const {
     alias: "i",
     describe: "IDE",
     type: "string",
+  })
+  .option("openide", {
+    alias: "oi",
+    describe: "Open Project In IDE",
+    type: "boolean",
   })
   .alias("h", "help")
   .describe("help", "Show Commands")
@@ -325,6 +331,7 @@ async function main() {
       path.resolve(template, "_gitignore"),
       path.resolve(template, ".github"),
     ],
+    vsCodeFiles: [path.resolve(template, ".vscode")],
     packageJSON: {
       keys: [
         "name",
@@ -696,6 +703,41 @@ async function main() {
   initializeGit =
     !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
+  packageManager =
+    packageManagers.length > 0 &&
+    ((pmanager &&
+      packageManagers.find(
+        (p) => p.name?.toLowerCase() === pmanager.toLowerCase(),
+      )) ||
+      packageManager ||
+      packageManagers[0]);
+
+  IDE =
+    IDEs.length > 0 &&
+    ((_ide &&
+      IDEs.find(
+        (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
+      )) ||
+      IDE ||
+      IDEs[0]);
+
+  const { openInIDE } =
+    !openide && IDE
+      ? await prompts(
+          [
+            {
+              type: "confirm",
+              name: "openInIDE",
+              message: "Open in IDE?",
+              initial: "true",
+            },
+          ],
+          {
+            onCancel: async () => await error(true, true),
+          },
+        )
+      : { openInIDE: false };
+
   if (initializeGit) {
     const nameArgs = ["config", "--global", "user.name"];
     const emailArgs = ["config", "--global", "user.email"];
@@ -753,24 +795,6 @@ async function main() {
       }
     }
   }
-
-  packageManager =
-    packageManagers.length > 0 &&
-    ((pmanager &&
-      packageManagers.find(
-        (p) => p.name?.toLowerCase() === pmanager.toLowerCase(),
-      )) ||
-      packageManager ||
-      packageManagers[0]);
-
-  IDE =
-    IDEs.length > 0 &&
-    ((_ide &&
-      IDEs.find(
-        (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
-      )) ||
-      IDE ||
-      IDEs[0]);
 
   if (!directoryExists) {
     console.log(blue(`- Creating '${path.basename(directory)}'.`));
@@ -884,6 +908,10 @@ async function main() {
     }
   }
 
+  if (IDE || initializeGit) {
+    await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
+  }
+
   if (!aftman) {
     console.log(yellow("- 'aftman' not found, attempting to install."));
     await installAftman(temporaryDirectory);
@@ -942,7 +970,7 @@ async function main() {
     }
   }
 
-  if (IDE) {
+  if (IDE && (openide || openInIDE)) {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
 
     if (
