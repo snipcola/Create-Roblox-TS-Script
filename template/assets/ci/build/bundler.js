@@ -147,10 +147,6 @@ class Bundler {
           .map((l) => (l === "\t" ? "" : l))
           .join("\n")
           .replace(
-            /TS\.import\(script, script(, .+?)\)/g,
-            "TS.import(script$1)",
-          )
-          .replace(
             /TS\.getModule\(script(, .+?)\)/g,
             "TS.getModule(script.include$1)",
           );
