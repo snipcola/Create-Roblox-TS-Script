@@ -478,6 +478,13 @@ async function main() {
     }
   }
 
+  function directoryValidation(value) {
+    if (!value) return "Directory cannot be empty.";
+    if (!/^(\/?[a-z0-9A-Z\-]+)+$/.test(value))
+      return "Directory is formatted incorrectly.";
+    return true;
+  }
+
   function nameValidation(value) {
     if (!value) return "Name cannot be empty.";
     if (!/^[a-zA-Z0-9-_]+$/.test(value))
@@ -487,7 +494,7 @@ async function main() {
 
   function authorValidation(value) {
     if (!value) return "Author cannot be empty.";
-    if (!/^[a-zA-Z0-9-_@.]+$/.test(value))
+    if (!/^[a-zA-Z0-9-_@. ]+$/.test(value))
       return "Author is formatted incorrectly.";
     return true;
   }
@@ -522,6 +529,7 @@ async function main() {
     await error(true, false, `\u2716 '${_template}' isn't a template.`);
   }
 
+  await checkValidation(pdirectory, directoryValidation);
   await checkValidation(pname, nameValidation);
   await checkValidation(pauthor, authorValidation);
   await checkValidation(pversion, versionValidation);
@@ -590,7 +598,8 @@ async function main() {
             type: "text",
             name: "directory",
             message: "Project Directory",
-            initial: "./roblox-ts-script",
+            initial: "roblox-ts-script",
+            validate: directoryValidation,
           },
         ],
         {
