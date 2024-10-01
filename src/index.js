@@ -432,12 +432,12 @@ async function main() {
     ],
     supportedIDEs: [
       {
-        name: "VSCode",
-        command: "code",
-      },
-      {
         name: "VSCodium",
         command: "codium",
+      },
+      {
+        name: "VSCode",
+        command: "code",
       },
     ],
   };
