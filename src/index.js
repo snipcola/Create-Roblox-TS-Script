@@ -21,6 +21,7 @@ const { yellow, green, blue, red } = require("colorette");
 const unzipper = require("unzipper");
 
 const {
+  template: _template,
   pdirectory,
   pname,
   pauthor,
@@ -31,6 +32,11 @@ const {
   openide,
 } = yargs
   .usage("Create Roblox-TS Script")
+  .option("template", {
+    alias: "t",
+    describe: "Template Name (e.g. hello-world)",
+    type: "string",
+  })
   .option("pdirectory", {
     alias: "pd",
     describe: "Project Directory",
@@ -58,12 +64,12 @@ const {
   })
   .option("pmanager", {
     alias: "pm",
-    describe: "Package Manager",
+    describe: "Package Manager (e.g. pnpm)",
     type: "string",
   })
   .option("ide", {
     alias: "i",
-    describe: "IDE",
+    describe: "IDE (e.g. codium)",
     type: "string",
   })
   .option("openide", {
@@ -326,7 +332,22 @@ async function main() {
       path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
     ],
-    optionalFiles: [path.resolve(template, "src")],
+    templates: [
+      {
+        name: "Hello World",
+        directory: path.resolve(template, "src", "hello-world"),
+        entrypoint: (dir) => path.resolve(dir, "src", "index.ts"),
+        dependencies: {},
+      },
+      {
+        name: "Hello World UI",
+        directory: path.resolve(template, "src", "hello-world-ui"),
+        entrypoint: (dir) => path.resolve(dir, "src", "app.tsx"),
+        dependencies: {
+          "@rbxts/vide": "0.4.6",
+        },
+      },
+    ],
     gitFiles: [
       path.resolve(template, "_gitignore"),
       path.resolve(template, ".github"),
@@ -436,11 +457,24 @@ async function main() {
       (await fileExists(directory)) &&
       (await fs.stat(directory)).isDirectory()
     ) {
-      await fs.rm(directory, { recursive: true, force: true });
+      await fs.rm(directory, { force: true, recursive: true });
     }
 
     if (exit) {
       process.exit(1);
+    }
+  }
+
+  async function copy(file, folder, force = true) {
+    const name = path.basename(file);
+    const newFile = path.resolve(
+      folder,
+      name.startsWith("_") ? name.replace("_", ".") : name,
+    );
+
+    if (force || !(await fileExists(newFile))) {
+      await fs.cp(file, newFile, { force: true, recursive: true });
+      return newFile;
     }
   }
 
@@ -477,6 +511,15 @@ async function main() {
         await error(true, false, `\u2716 ${validation}`);
       }
     }
+  }
+
+  if (
+    _template &&
+    !config.templates.find(
+      ({ directory }) => path.parse(directory).name === _template,
+    )
+  ) {
+    await error(true, false, `\u2716 '${_template}' isn't a template.`);
   }
 
   await checkValidation(pname, nameValidation);
@@ -588,6 +631,11 @@ async function main() {
     }
   }
 
+  const srcDirectory = path.resolve(directory, "src");
+  const srcExists =
+    (await fileExists(srcDirectory)) &&
+    (await fs.stat(srcDirectory)).isDirectory();
+
   const existingPackageJSON =
     directoryExists &&
     (await readJSONFile(path.resolve(directory, "package.json")));
@@ -619,83 +667,110 @@ async function main() {
     (await fileExists(path.resolve(directory, ".git"))) &&
     (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
 
-  let { name, author, version, initializeGit, packageManager, IDE } =
-    await prompts(
-      [
-        ...[
-          !(pname || existingPackageJSON?.name)
-            ? {
-                type: "text",
-                name: "name",
-                message: "Project Name",
-                initial: "Project",
-                validate: nameValidation,
-              }
-            : {},
-        ],
-        ...[
-          !(pauthor || existingPackageJSON?.author)
-            ? {
-                type: "text",
-                name: "author",
-                message: "Project Author",
-                initial: "Author",
-                validate: authorValidation,
-              }
-            : {},
-        ],
-        ...[
-          !(pversion || existingPackageJSON?.version)
-            ? {
-                type: "text",
-                name: "version",
-                message: "Project Version",
-                initial: "0.0.1",
-                validate: versionValidation,
-              }
-            : {},
-        ],
-        ...[
-          !hasGitDirectory && git && _git === undefined
-            ? {
-                type: "confirm",
-                name: "initializeGit",
-                message: "Initialize Git Repo",
-                initial: false,
-              }
-            : {},
-        ],
-        ...[
-          !pmanager && packageManagers.length > 1
-            ? {
-                type: "select",
-                name: "packageManager",
-                message: "Package Manager",
-                choices: packageManagers.map((p) => ({
-                  title: p.name,
-                  value: p,
-                })),
-              }
-            : {},
-        ],
-        ...[
-          !_ide && IDEs.length > 1
-            ? {
-                type: "select",
-                name: "IDE",
-                message: "IDE",
-                choices: IDEs.map((i) => ({
-                  title: i.name,
-                  value: i,
-                })),
-              }
-            : {},
-        ],
+  let {
+    srcTemplate,
+    name,
+    author,
+    version,
+    initializeGit,
+    packageManager,
+    IDE,
+  } = await prompts(
+    [
+      ...[
+        !(_template || srcExists)
+          ? {
+              type: "select",
+              name: "srcTemplate",
+              message: "Template",
+              choices: config.templates.map((t) => ({
+                title: t.name,
+                value: t,
+              })),
+            }
+          : {},
       ],
-      {
-        onCancel: async () => await error(true, true),
-      },
-    );
+      ...[
+        !(pname || existingPackageJSON?.name)
+          ? {
+              type: "text",
+              name: "name",
+              message: "Project Name",
+              initial: "Project",
+              validate: nameValidation,
+            }
+          : {},
+      ],
+      ...[
+        !(pauthor || existingPackageJSON?.author)
+          ? {
+              type: "text",
+              name: "author",
+              message: "Project Author",
+              initial: "Author",
+              validate: authorValidation,
+            }
+          : {},
+      ],
+      ...[
+        !(pversion || existingPackageJSON?.version)
+          ? {
+              type: "text",
+              name: "version",
+              message: "Project Version",
+              initial: "0.0.1",
+              validate: versionValidation,
+            }
+          : {},
+      ],
+      ...[
+        !(hasGitDirectory || !git || _git !== undefined)
+          ? {
+              type: "confirm",
+              name: "initializeGit",
+              message: "Initialize Git Repo",
+              initial: false,
+            }
+          : {},
+      ],
+      ...[
+        !(pmanager || packageManagers.length <= 1)
+          ? {
+              type: "select",
+              name: "packageManager",
+              message: "Package Manager",
+              choices: packageManagers.map((p) => ({
+                title: p.name,
+                value: p,
+              })),
+            }
+          : {},
+      ],
+      ...[
+        !(_ide || IDEs.length <= 1)
+          ? {
+              type: "select",
+              name: "IDE",
+              message: "IDE",
+              choices: IDEs.map((i) => ({
+                title: i.name,
+                value: i,
+              })),
+            }
+          : {},
+      ],
+    ],
+    {
+      onCancel: async () => await error(true, true),
+    },
+  );
+
+  srcTemplate =
+    (_template &&
+      config.templates.find(
+        ({ directory }) => path.parse(directory).name === _template,
+      )) ||
+    srcTemplate;
 
   name = pname || existingPackageJSON?.name || name;
   author = pauthor || existingPackageJSON?.author || author;
@@ -804,25 +879,25 @@ async function main() {
 
   console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
 
-  async function copy(file, folder, force = true) {
-    const name = path.basename(file);
-    const newFile = path.resolve(
-      folder,
-      name.startsWith("_") ? name.replace("_", ".") : name,
-    );
-
-    if (force || !(await fileExists(newFile))) {
-      await fs.cp(file, newFile, { recursive: true, force: true });
-    }
-  }
-
   await Promise.all([
     ...config.files.map((f) => copy(f, directory)),
-    ...config.optionalFiles.map((f) => copy(f, directory, false)),
     ...(hasGitDirectory || initializeGit
       ? config.gitFiles.map((f) => copy(f, directory))
       : []),
   ]);
+
+  if (srcTemplate) {
+    console.log(
+      blue(`- Moving template files to '${path.basename(directory)}'.`),
+    );
+
+    if (srcExists) {
+      await fs.rm(srcDirectory, { force: true, recursive: true });
+    }
+
+    const newDirectory = await copy(srcTemplate.directory, directory);
+    await fs.rename(newDirectory, srcDirectory);
+  }
 
   console.log(blue("- Modifying 'package.json' values."));
 
@@ -836,6 +911,13 @@ async function main() {
   packageJSON.name = name.toLowerCase();
   packageJSON.author = author;
   packageJSON.version = version;
+
+  if (srcTemplate?.dependencies) {
+    packageJSON.dependencies = {
+      ...(packageJSON.dependencies || {}),
+      ...srcTemplate.dependencies,
+    };
+  }
 
   if (existingPackageJSON) {
     console.log(blue("- Preserving previous 'package.json' values."));
@@ -974,8 +1056,13 @@ async function main() {
     console.log(blue(`- Opening project in '${IDE.name}'.`));
 
     if (
-      !(await executeCommand(IDE.path, [".", "src/index.ts"], directory))
-        .success
+      !(
+        await executeCommand(
+          IDE.path,
+          [".", ...(srcTemplate ? [srcTemplate.entrypoint(directory)] : [])],
+          directory,
+        )
+      ).success
     ) {
       await error(
         false,
