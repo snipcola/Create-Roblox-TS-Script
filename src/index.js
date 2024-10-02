@@ -979,6 +979,10 @@ async function main() {
     }),
   );
 
+  if (IDE || initializeGit) {
+    await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
+  }
+
   if (initializeGit) {
     console.log(blue("- Initializing git repository."));
 
@@ -997,10 +1001,6 @@ async function main() {
     if (commands.some(({ success }) => !success)) {
       await error(true, true, "\u2716 Failed to initialize git repository.");
     }
-  }
-
-  if (IDE || initializeGit) {
-    await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
   }
 
   if (!aftman) {
