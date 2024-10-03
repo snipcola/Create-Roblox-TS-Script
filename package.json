@@ -1,11 +1,7 @@
 {
   "name": "create-roblox-ts-script",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "author": "Snipcola",
-  "repository": {
-    "type": "git",
-    "url": "https://git.snipcola.com/snipcola/Create-Roblox-TS-Script.git"
-  },
   "keywords": [
     "roblox",
     "typescript",
@@ -15,6 +11,11 @@
     "rbxts",
     "bundle"
   ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://git.snipcola.com/snipcola/Create-Roblox-TS-Script.git"
+  },
   "main": "src/index.js",
   "bin": {
     "create-roblox-ts-script": "src/index.js"

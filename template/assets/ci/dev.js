@@ -46,10 +46,14 @@ async function syncRojo(rojoConfig) {
   await executeCommand(rojo, ["serve", rojoConfig]);
 }
 
-async function main(config) {
-  const args = process.argv.splice(2);
+async function main() {
+  const root = path.resolve(__dirname, "..", "..");
+  const config = {
+    folder: path.resolve(root, "src"),
+    rojoConfig: path.resolve(root, "assets", "rojo", "studio"),
+  };
 
-  if (["--sync", "-s"].some((a) => args.includes(a))) {
+  if (["--sync", "-s"].some((a) => process.argv.splice(2).includes(a))) {
     sync = true;
   }
 
@@ -58,11 +62,4 @@ async function main(config) {
   if (sync) syncRojo(config.rojoConfig);
 }
 
-const root = path.resolve(__dirname, "..", "..");
-
-const config = {
-  folder: path.resolve(root, "src"),
-  rojoConfig: path.resolve(root, "assets", "rojo", "studio"),
-};
-
-main(config);
+main();
