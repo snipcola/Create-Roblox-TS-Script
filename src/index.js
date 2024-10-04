@@ -16,7 +16,7 @@ const prompts = require("prompts");
 const yargs = require("yargs");
 
 const { lookpath } = require("lookpath");
-const { yellow, green, blue, red } = require("colorette");
+const { blue, green, yellow, red } = require("colorette");
 
 const unzipper = require("unzipper");
 
@@ -313,13 +313,13 @@ async function installAftman(temporaryDirectory) {
   return await clean();
 }
 
-async function getAftman() {
+async function getAftman(bin) {
   const directory = path.resolve(os.homedir(), ".aftman", "bin");
-  return await lookpath("aftman", { include: [directory] });
+  return await lookpath(bin || "aftman", { include: [directory] });
 }
 
 async function main() {
-  const { default: temporaryDirectory } = await import("temp-dir");
+  const temporaryDirectory = await fs.realpath(os.tmpdir());
 
   const root = path.resolve(__dirname, "..");
   const template = path.resolve(root, "template");
@@ -337,7 +337,6 @@ async function main() {
         name: "Hello World",
         directory: path.resolve(template, "src", "hello-world"),
         entrypoint: (dir) => path.resolve(dir, "src", "index.ts"),
-        dependencies: {},
       },
       {
         name: "Hello World UI",
@@ -445,9 +444,21 @@ async function main() {
   let directory;
   let createdDirectory = false;
 
+  function info(message) {
+    console.log(blue(`i ${message}`));
+  }
+
+  function success(message) {
+    console.log(green(`√ ${message}`));
+  }
+
+  function warn(message) {
+    console.log(yellow(`! ${message}`));
+  }
+
   async function error(exit, deleteDirectory, message) {
     if (message) {
-      console.error(red(message));
+      console.error(red(`× ${message}`));
     }
 
     if (
@@ -515,7 +526,7 @@ async function main() {
       const validation = func(value);
 
       if (validation !== true) {
-        await error(true, false, `\u2716 ${validation}`);
+        await error(true, false, validation);
       }
     }
   }
@@ -526,7 +537,7 @@ async function main() {
       ({ directory }) => path.parse(directory).name === _template,
     )
   ) {
-    await error(true, false, `\u2716 '${_template}' isn't a template.`);
+    await error(true, false, `'${_template}' isn't a template.`);
   }
 
   await checkValidation(pdirectory, directoryValidation);
@@ -538,11 +549,11 @@ async function main() {
     pmanager &&
     !config.supportedPackageManagers.find((p) => p.command === pmanager)
   ) {
-    await error(true, false, `\u2716 '${pmanager}' not supported.`);
+    await error(true, false, `'${pmanager}' not supported.`);
   }
 
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
-    await error(true, false, `\u2716 '${_ide}' not supported.`);
+    await error(true, false, `'${_ide}' not supported.`);
   }
 
   const git = await lookpath("git");
@@ -578,7 +589,7 @@ async function main() {
       (n) => n.name?.toLowerCase() === pmanager.toLowerCase(),
     )
   ) {
-    await error(true, false, `\u2716 '${pmanager}' not available.`);
+    await error(true, false, `'${pmanager}' not available.`);
   }
 
   if (
@@ -587,7 +598,7 @@ async function main() {
       (i) => path.parse(i.path)?.name?.toLowerCase() === _ide.toLowerCase(),
     )
   ) {
-    await error(true, false, `\u2716 '${_ide}' not available.`);
+    await error(true, false, `'${_ide}' not available.`);
   }
 
   const _directory = pdirectory
@@ -610,14 +621,14 @@ async function main() {
   directory = path.resolve(_directory.directory);
 
   if (path.extname(directory) !== "") {
-    await error(true, false, "\u2716 Not a directory.");
+    await error(true, false, "Not a directory.");
   }
 
   let directoryExists = await fileExists(directory);
 
   if (directoryExists && !pdirectory) {
     if (!(await fs.stat(directory)).isDirectory()) {
-      await error(true, false, "\u2716 Not a directory.");
+      await error(true, false, "Not a directory.");
     }
 
     const { deleteDirectory } = await prompts(
@@ -830,7 +841,7 @@ async function main() {
     const { output: email } = await executeCommand(git, emailArgs);
 
     if (!name) {
-      console.log(yellow("- Name not set for 'git'."));
+      warn("Name not set for 'git'.");
 
       const { newName } = await prompts(
         [
@@ -850,12 +861,12 @@ async function main() {
         !newName ||
         !(await executeCommand(git, [...nameArgs, newName])).success
       ) {
-        await error(true, true, "\u2716 Failed to set git name.");
+        await error(true, true, "Failed to set git name.");
       }
     }
 
     if (!email) {
-      console.log(yellow("- Email not set for 'git'."));
+      warn("Email not set for 'git'.");
 
       const { newEmail } = await prompts(
         [
@@ -875,18 +886,18 @@ async function main() {
         !newEmail ||
         !(await executeCommand(git, [...emailArgs, newEmail])).success
       ) {
-        await error(true, true, "\u2716 Failed to set git email.");
+        await error(true, true, "Failed to set git email.");
       }
     }
   }
 
   if (!directoryExists) {
-    console.log(blue(`- Creating '${path.basename(directory)}'.`));
+    info(`Creating '${path.basename(directory)}'.`);
     await fs.mkdir(directory, { recursive: true });
     createdDirectory = true;
   }
 
-  console.log(blue(`- Moving files to '${path.basename(directory)}'.`));
+  info(`Moving files to '${path.basename(directory)}'.`);
 
   await Promise.all([
     ...config.files.map((f) => copy(f, directory)),
@@ -896,9 +907,7 @@ async function main() {
   ]);
 
   if (srcTemplate) {
-    console.log(
-      blue(`- Moving template files to '${path.basename(directory)}'.`),
-    );
+    info(`Moving template files to '${path.basename(directory)}'.`);
 
     if (srcExists) {
       await fs.rm(srcDirectory, { force: true, recursive: true });
@@ -908,13 +917,13 @@ async function main() {
     await fs.rename(newDirectory, srcDirectory);
   }
 
-  console.log(blue("- Modifying 'package.json' values."));
+  info("Modifying 'package.json' values.");
 
   const packageJSONPath = path.resolve(directory, "package.json");
   let packageJSON = await readJSONFile(packageJSONPath);
 
   if (!packageJSON) {
-    await error(true, true, "\u2716 File 'package.json' doesn't exist.");
+    await error(true, true, "File 'package.json' doesn't exist.");
   }
 
   packageJSON.name = name.toLowerCase();
@@ -929,13 +938,14 @@ async function main() {
   }
 
   if (existingPackageJSON) {
-    console.log(blue("- Preserving previous 'package.json' values."));
-    packageJSON = preserveObject(
-      packageJSON,
-      existingPackageJSON,
-      config.packageJSON,
-    );
+    info("Preserving previous 'package.json' values.");
   }
+
+  packageJSON = preserveObject(
+    packageJSON,
+    existingPackageJSON || packageJSON,
+    config.packageJSON,
+  );
 
   await writeJSONFile(packageJSONPath, packageJSON);
 
@@ -944,10 +954,10 @@ async function main() {
     let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
 
     if (!tsConfigJSON) {
-      await error(true, true, "\u2716 File 'tsconfig.json' doesn't exist.");
+      await error(true, true, "File 'tsconfig.json' doesn't exist.");
     }
 
-    console.log(blue("- Preserving previous 'tsconfig.json' values."));
+    info("Preserving previous 'tsconfig.json' values.");
     tsConfigJSON = preserveObject(
       tsConfigJSON,
       existingTSConfigJSON,
@@ -960,18 +970,18 @@ async function main() {
   await Promise.all(
     projectJSONs.map(async function ({ file, studio, existing }) {
       const _path = `assets/rojo${studio ? "/studio" : ""}/${rojoName}`;
-      console.log(blue(`- Modifying '${_path}' values.`));
+      info(`Modifying '${_path}' values.`);
 
       let projectJSON = await readJSONFile(file);
 
       if (!projectJSON) {
-        await error(true, true, `\u2716 File '${_path}' doesn't exist.`);
+        await error(true, true, `File '${_path}' doesn't exist.`);
       }
 
       projectJSON.name = pname || existing?.name || name;
 
       if (existing) {
-        console.log(blue(`- Preserving previous '${_path}' values.`));
+        info(`Preserving previous '${_path}' values.`);
         projectJSON = preserveObject(projectJSON, existing, config.rojoJSON);
       }
 
@@ -984,7 +994,7 @@ async function main() {
   }
 
   if (initializeGit) {
-    console.log(blue("- Initializing git repository."));
+    info("Initializing git repository.");
 
     const commands = [
       await executeCommand(git, ["init"], directory),
@@ -999,12 +1009,12 @@ async function main() {
     ];
 
     if (commands.some(({ success }) => !success)) {
-      await error(true, true, "\u2716 Failed to initialize git repository.");
+      await error(true, true, "Failed to initialize git repository.");
     }
   }
 
   if (!aftman) {
-    console.log(yellow("- 'aftman' not found, attempting to install."));
+    warn("'aftman' not found, attempting to install.");
     await installAftman(temporaryDirectory);
     aftman = await getAftman();
 
@@ -1012,24 +1022,28 @@ async function main() {
       await error(
         true,
         true,
-        "\u2716 Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
+        "Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
       );
     }
   }
 
-  console.log(blue(`- Installing dependencies using 'aftman'.`));
+  info("Installing dependencies using 'aftman'.");
   await executeCommand(aftman, ["install", "--no-trust-check"], directory);
 
-  console.log(blue(`- Installing Rojo plugin for Roblox Studio.`));
+  const rojo = await getAftman("rojo");
 
-  if (!(await executeCommand("rojo", ["plugin", "install"]))) {
-    await error(false, false, "\u2716 Failed to install Rojo plugin.");
+  if (!rojo) {
+    await error(true, true, "'rojo' not found.");
+  }
+
+  info("Installing Rojo plugin for Roblox Studio.");
+
+  if (!(await executeCommand(rojo, ["plugin", "install"], directory))) {
+    await error(false, false, "Failed to install Rojo plugin.");
   }
 
   if (packageManager) {
-    console.log(
-      blue(`- Installing dependencies using '${packageManager.name}'.`),
-    );
+    info(`Installing dependencies using '${packageManager.name}'.`);
 
     if (
       !(
@@ -1043,11 +1057,11 @@ async function main() {
       await error(
         true,
         true,
-        `"\u2716 Failed to install dependencies using '${packageManager.name}'.`,
+        `Failed to install dependencies using '${packageManager.name}'.`,
       );
     }
 
-    console.log(blue(`- Building project using '${packageManager.name}'.`));
+    info(`Building project using '${packageManager.name}'.`);
 
     if (
       !(await executeCommand(packageManager.path, ["run", "build"], directory))
@@ -1056,13 +1070,13 @@ async function main() {
       await error(
         true,
         true,
-        `\u2716 Failed to build project using '${packageManager.name}'.`,
+        `Failed to build project using '${packageManager.name}'.`,
       );
     }
   }
 
   if (IDE && (openide || openInIDE)) {
-    console.log(blue(`- Opening project in '${IDE.name}'.`));
+    info(`Opening project in '${IDE.name}'.`);
 
     if (
       !(
@@ -1073,15 +1087,11 @@ async function main() {
         )
       ).success
     ) {
-      await error(
-        false,
-        false,
-        `\u2716 Failed to open project in '${IDE.name}'.`,
-      );
+      await error(false, false, `Failed to open project in '${IDE.name}'.`);
     }
   }
 
-  console.log(green(`\u2714 Created '${name}': ${directory}`));
+  success(`Created '${name}': ${directory}`);
 }
 
 main();
