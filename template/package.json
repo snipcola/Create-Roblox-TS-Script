@@ -12,12 +12,12 @@
   },
   "scripts": {
     "build": "node assets/ci/build",
+    "prepublishOnly": "node assets/ci/build",
     "dev": "node assets/ci/dev",
     "clean": "node assets/ci/clean",
     "lint": "eslint src",
     "format": "prettier --write \"src/**/*\"",
-    "release": "git push origin main:release --force",
-    "prepublishOnly": "node assets/ci/build"
+    "release": "git push origin main:release --force"
   },
   "devDependencies": {
     "@rbxts/compiler-types": "3.0.0-types.0",

@@ -301,6 +301,10 @@ class Bundler {
         match[1].split(",").map((arg) => arg.trim().replace(/^"|"$/g, ""));
       args.shift();
 
+      if (args[0] && args[0].startsWith("TS.getModule(")) {
+        continue;
+      }
+
       await processPath(await getPath(toPath(args)));
     }
 
@@ -308,7 +312,7 @@ class Bundler {
       const args =
         match[1] &&
         match[1].split(",").map((arg) => arg.trim().replace(/^"|"$/g, ""));
-      if (match[2]) args.push(match[2]);
+      if (match[2]) args.push(...match[2].split("."));
       args.shift();
 
       await processPath(

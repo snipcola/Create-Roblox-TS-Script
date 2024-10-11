@@ -704,7 +704,7 @@ async function main() {
   } = await prompts(
     [
       ...[
-        !(_package !== undefined || srcExists)
+        _package === undefined
           ? {
               type: "confirm",
               name: "package",
@@ -853,6 +853,15 @@ async function main() {
 
   if (!package) {
     config.gitFiles.push(path.resolve(template, ".github"));
+  } else {
+    const githubDirectory = path.resolve(directory, ".github");
+
+    if (
+      (await fileExists(githubDirectory)) &&
+      (await fs.stat(githubDirectory)).isDirectory()
+    ) {
+      await fs.rm(githubDirectory, { force: true, recursive: true });
+    }
   }
 
   if (initializeGit) {
@@ -967,11 +976,6 @@ async function main() {
   packageJSON.author = author;
   packageJSON.version = version;
 
-  if (package) {
-    packageJSON.main = "out/init.lua";
-    packageJSON.types = "out/index.d.ts";
-  }
-
   if (srcTemplate?.dependencies) {
     packageJSON.dependencies = {
       ...(packageJSON.dependencies || {}),
@@ -988,6 +992,9 @@ async function main() {
     existingPackageJSON || packageJSON,
     config.packageJSON,
   );
+
+  packageJSON.main = package ? "out/init.lua" : undefined;
+  packageJSON.types = package ? "out/index.d.ts" : undefined;
 
   if (packageJSON.scripts) {
     if (package) {
@@ -1012,10 +1019,6 @@ async function main() {
     await error(true, true, "File 'tsconfig.json' doesn't exist.");
   }
 
-  if (tsConfigJSON.compilerOptions && package) {
-    tsConfigJSON.compilerOptions.declaration = true;
-  }
-
   if (existingTSConfigJSON) {
     info("Preserving previous 'tsconfig.json' values.");
   }
@@ -1025,6 +1028,10 @@ async function main() {
     existingTSConfigJSON || tsConfigJSON,
     config.tsConfigJSON,
   );
+
+  if (tsConfigJSON.compilerOptions) {
+    tsConfigJSON.compilerOptions.declaration = package ? true : undefined;
+  }
 
   await writeJSONFile(tsConfigJSONPath, tsConfigJSON);
 
