@@ -21,6 +21,7 @@ const { blue, green, yellow, red } = require("colorette");
 const unzipper = require("unzipper");
 
 const {
+  package: _package,
   template: _template,
   pdirectory,
   pname,
@@ -32,6 +33,11 @@ const {
   openide,
 } = yargs
   .usage("Create Roblox-TS Script")
+  .option("package", {
+    alias: "p",
+    describe: "Create Package",
+    type: "boolean",
+  })
   .option("template", {
     alias: "t",
     describe: "Template Name (e.g. hello-world)",
@@ -347,10 +353,7 @@ async function main() {
         },
       },
     ],
-    gitFiles: [
-      path.resolve(template, "_gitignore"),
-      path.resolve(template, ".github"),
-    ],
+    gitFiles: [path.resolve(template, "_gitignore")],
     vsCodeFiles: [path.resolve(template, ".vscode")],
     packageJSON: {
       keys: [
@@ -364,7 +367,9 @@ async function main() {
         "type",
         "main",
         "bin",
+        "types",
         "files",
+        "publishConfig",
         "private",
         "scripts",
         "dependencies",
@@ -374,7 +379,7 @@ async function main() {
         "engines",
         "config",
       ],
-      force: ["type", "scripts", "devDependencies"],
+      force: ["type", "files", "publishConfig", "scripts", "devDependencies"],
     },
     tsConfigJSON: {
       entrypoint: "compilerOptions",
@@ -688,6 +693,7 @@ async function main() {
     (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
 
   let {
+    package,
     srcTemplate,
     name,
     author,
@@ -697,6 +703,16 @@ async function main() {
     IDE,
   } = await prompts(
     [
+      ...[
+        !(_package !== undefined || srcExists)
+          ? {
+              type: "confirm",
+              name: "package",
+              message: "Create Package",
+              initial: false,
+            }
+          : {},
+      ],
       ...[
         !(_template || srcExists)
           ? {
@@ -785,6 +801,8 @@ async function main() {
     },
   );
 
+  package = _package !== undefined ? _package : package;
+
   srcTemplate =
     (_template &&
       config.templates.find(
@@ -792,9 +810,9 @@ async function main() {
       )) ||
     srcTemplate;
 
-  name = pname || existingPackageJSON?.name || name;
-  author = pauthor || existingPackageJSON?.author || author;
-  version = pversion || existingPackageJSON?.version || version;
+  name = (pname || existingPackageJSON?.name || name).trim();
+  author = (pauthor || existingPackageJSON?.author || author).trim();
+  version = (pversion || existingPackageJSON?.version || version).trim();
   initializeGit =
     !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
@@ -832,6 +850,10 @@ async function main() {
           },
         )
       : { openInIDE: false };
+
+  if (!package) {
+    config.gitFiles.push(path.resolve(template, ".github"));
+  }
 
   if (initializeGit) {
     const nameArgs = ["config", "--global", "user.name"];
@@ -926,9 +948,29 @@ async function main() {
     await error(true, true, "File 'package.json' doesn't exist.");
   }
 
-  packageJSON.name = name.toLowerCase();
+  function parsePackageJSONName() {
+    const _name = name.toLowerCase();
+
+    if (!name.startsWith("@") && package) {
+      const _author = author
+        .toLowerCase()
+        .match(/[a-zA-Z]+/g)
+        .join("");
+
+      return `@${_author}/${_name}`;
+    }
+
+    return _name;
+  }
+
+  packageJSON.name = parsePackageJSONName();
   packageJSON.author = author;
   packageJSON.version = version;
+
+  if (package) {
+    packageJSON.main = "out/init.lua";
+    packageJSON.types = "out/index.d.ts";
+  }
 
   if (srcTemplate?.dependencies) {
     packageJSON.dependencies = {
@@ -947,25 +989,44 @@ async function main() {
     config.packageJSON,
   );
 
-  await writeJSONFile(packageJSONPath, packageJSON);
-
-  if (existingTSConfigJSON) {
-    const tsConfigJSONPath = path.resolve(directory, "tsconfig.json");
-    let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
-
-    if (!tsConfigJSON) {
-      await error(true, true, "File 'tsconfig.json' doesn't exist.");
+  if (packageJSON.scripts) {
+    if (package) {
+      packageJSON.scripts.build += ` --package`;
+      packageJSON.scripts.dev += ` --package`;
+      packageJSON.scripts.prepublishOnly += ` --package`;
     }
 
-    info("Preserving previous 'tsconfig.json' values.");
-    tsConfigJSON = preserveObject(
-      tsConfigJSON,
-      existingTSConfigJSON,
-      config.tsConfigJSON,
-    );
-
-    await writeJSONFile(tsConfigJSONPath, tsConfigJSON);
+    if (package || !(hasGitDirectory || initializeGit)) {
+      packageJSON.scripts.release = undefined;
+    }
   }
+
+  await writeJSONFile(packageJSONPath, packageJSON);
+
+  info("Modifying 'tsconfig.json' values.");
+
+  const tsConfigJSONPath = path.resolve(directory, "tsconfig.json");
+  let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
+
+  if (!tsConfigJSON) {
+    await error(true, true, "File 'tsconfig.json' doesn't exist.");
+  }
+
+  if (tsConfigJSON.compilerOptions && package) {
+    tsConfigJSON.compilerOptions.declaration = true;
+  }
+
+  if (existingTSConfigJSON) {
+    info("Preserving previous 'tsconfig.json' values.");
+  }
+
+  tsConfigJSON = preserveObject(
+    tsConfigJSON,
+    existingTSConfigJSON || tsConfigJSON,
+    config.tsConfigJSON,
+  );
+
+  await writeJSONFile(tsConfigJSONPath, tsConfigJSON);
 
   await Promise.all(
     projectJSONs.map(async function ({ file, studio, existing }) {
@@ -982,7 +1043,16 @@ async function main() {
 
       if (existing) {
         info(`Preserving previous '${_path}' values.`);
-        projectJSON = preserveObject(projectJSON, existing, config.rojoJSON);
+      }
+
+      projectJSON = preserveObject(
+        projectJSON,
+        existing || projectJSON,
+        config.rojoJSON,
+      );
+
+      if (!studio && projectJSON.tree?.include && package) {
+        projectJSON.tree.include = undefined;
       }
 
       await writeJSONFile(file, projectJSON);

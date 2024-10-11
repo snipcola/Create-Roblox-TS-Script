@@ -39,7 +39,7 @@ If you installed `pnpm`, use that instead of `npm` for the following steps.
 
    If you want to test your script on Roblox Studio, run the following once: `rojo plugin install`.
 
-   Then, simply run `npm run dev ---sync / pnpm dev --sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
+   Then, simply run `npm run dev -- --sync / pnpm dev --sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
 
 5. **Deploy** (optional)
 
