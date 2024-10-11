@@ -496,7 +496,7 @@ async function main() {
 
   function directoryValidation(value) {
     if (!value) return "Directory cannot be empty.";
-    if (!/^(\/?(\.{1,2}(\/|$)|[a-zA-Z0-9\-]+\/?)+)$/.test(value))
+    if (!/^(\/?(\.{1,2}(\/|$)|[a-zA-Z0-9\-_ ]+\/?)+)$/.test(value))
       return "Directory is formatted incorrectly.";
     return true;
   }
