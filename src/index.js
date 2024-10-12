@@ -21,7 +21,7 @@ const { blue, green, yellow, red } = require("colorette");
 const unzipper = require("unzipper");
 
 const {
-  package: _package,
+  package: __package,
   template: _template,
   pdirectory,
   pname,
@@ -168,7 +168,6 @@ function preserveObject(object, existingObject, { entrypoint, keys, force }) {
               : [...objectValue, ...existingValue],
           ),
         );
-        continue;
       } else if (isObject(objectValue)) {
         newObject[key] = forceValue
           ? traverse(existingValue, objectValue)
@@ -402,6 +401,7 @@ async function main() {
         "baseUrl",
         "incremental",
         "tsBuildInfoFile",
+        "declaration",
       ],
       force: [
         "module",
@@ -413,7 +413,6 @@ async function main() {
         "rootDir",
         "outDir",
         "baseUrl",
-        "tsBuildInfoFile",
       ],
     },
     rojoJSON: {
@@ -693,7 +692,7 @@ async function main() {
     (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
 
   let {
-    package,
+    package: _package,
     srcTemplate,
     name,
     author,
@@ -704,7 +703,7 @@ async function main() {
   } = await prompts(
     [
       ...[
-        _package === undefined
+        __package === undefined
           ? {
               type: "confirm",
               name: "package",
@@ -801,7 +800,7 @@ async function main() {
     },
   );
 
-  package = _package !== undefined ? _package : package;
+  _package = __package !== undefined ? __package : _package;
 
   srcTemplate =
     (_template &&
@@ -851,7 +850,7 @@ async function main() {
         )
       : { openInIDE: false };
 
-  if (!package) {
+  if (!_package) {
     config.gitFiles.push(path.resolve(template, ".github"));
   } else {
     const githubDirectory = path.resolve(directory, ".github");
@@ -960,7 +959,7 @@ async function main() {
   function parsePackageJSONName() {
     const _name = name.toLowerCase();
 
-    if (!name.startsWith("@") && package) {
+    if (!name.startsWith("@") && _package) {
       const _author = author
         .toLowerCase()
         .match(/[a-zA-Z]+/g)
@@ -975,6 +974,11 @@ async function main() {
   packageJSON.name = parsePackageJSONName();
   packageJSON.author = author;
   packageJSON.version = version;
+
+  if (_package) {
+    packageJSON.main = "out/init.lua";
+    packageJSON.types = "out/index.d.ts";
+  }
 
   if (srcTemplate?.dependencies) {
     packageJSON.dependencies = {
@@ -993,30 +997,35 @@ async function main() {
     config.packageJSON,
   );
 
-  packageJSON.main = package ? "out/init.lua" : undefined;
-  packageJSON.types = package ? "out/index.d.ts" : undefined;
+  if (!_package) {
+    packageJSON.main = undefined;
+    packageJSON.types = undefined;
+  }
 
   if (packageJSON.scripts) {
-    if (package) {
+    if (_package) {
       packageJSON.scripts.build += ` --package`;
       packageJSON.scripts.dev += ` --package`;
       packageJSON.scripts.prepublishOnly += ` --package`;
     }
 
-    if (package || !(hasGitDirectory || initializeGit)) {
+    if (_package || !(hasGitDirectory || initializeGit)) {
       packageJSON.scripts.release = undefined;
     }
   }
 
   await writeJSONFile(packageJSONPath, packageJSON);
 
-  info("Modifying 'tsconfig.json' values.");
-
   const tsConfigJSONPath = path.resolve(directory, "tsconfig.json");
   let tsConfigJSON = await readJSONFile(tsConfigJSONPath);
 
   if (!tsConfigJSON) {
     await error(true, true, "File 'tsconfig.json' doesn't exist.");
+  }
+
+  if (tsConfigJSON.compilerOptions && _package) {
+    info("Modifying 'tsconfig.json' values.");
+    tsConfigJSON.compilerOptions.declaration = true;
   }
 
   if (existingTSConfigJSON) {
@@ -1029,8 +1038,8 @@ async function main() {
     config.tsConfigJSON,
   );
 
-  if (tsConfigJSON.compilerOptions) {
-    tsConfigJSON.compilerOptions.declaration = package ? true : undefined;
+  if (tsConfigJSON.compilerOptions && !_package) {
+    tsConfigJSON.compilerOptions.declaration = undefined;
   }
 
   await writeJSONFile(tsConfigJSONPath, tsConfigJSON);
@@ -1058,7 +1067,7 @@ async function main() {
         config.rojoJSON,
       );
 
-      if (!studio && projectJSON.tree?.include && package) {
+      if (!studio && projectJSON.tree?.include && _package) {
         projectJSON.tree.include = undefined;
       }
 
@@ -1068,6 +1077,28 @@ async function main() {
 
   if (IDE || initializeGit) {
     await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
+  }
+
+  const launchJSONPath = path.resolve(directory, ".vscode", "launch.json");
+  const launchJSON = await readJSONFile(launchJSONPath);
+
+  if (launchJSON?.configurations && _package) {
+    info("Modifying '.vscode/launch.json' values.");
+
+    launchJSON.configurations = launchJSON.configurations.filter(
+      function (configuration) {
+        if (
+          configuration.type === "node" &&
+          configuration.request === "launch"
+        ) {
+          configuration.args = [...(configuration.args || []), "--package"];
+        }
+
+        return !configuration.args?.includes("--sync");
+      },
+    );
+
+    await writeJSONFile(launchJSONPath, launchJSON);
   }
 
   if (initializeGit) {
