@@ -378,7 +378,16 @@ async function main() {
         "engines",
         "config",
       ],
-      force: ["type", "files", "publishConfig", "scripts", "devDependencies"],
+      force: [
+        "name",
+        "author",
+        "version",
+        "type",
+        "files",
+        "publishConfig",
+        "scripts",
+        "devDependencies",
+      ],
     },
     tsConfigJSON: {
       entrypoint: "compilerOptions",
@@ -417,7 +426,7 @@ async function main() {
     },
     rojoJSON: {
       keys: ["name", "globIgnorePaths", "tree"],
-      force: ["globIgnorePaths", "tree"],
+      force: ["name", "globIgnorePaths", "tree"],
     },
     supportedPackageManagers: [
       {
