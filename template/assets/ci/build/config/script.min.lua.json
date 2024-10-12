@@ -2,9 +2,18 @@
   "generator": "retain_lines",
   "rules": [
     "rename_variables",
+    "remove_spaces",
+    "remove_comments",
     "remove_types",
+    "remove_empty_do",
+    "remove_nil_declaration",
     "remove_method_definition",
     "remove_function_call_parens",
+    "remove_unused_if_branch",
+    "remove_unused_while",
+    "remove_unused_variable",
+    "convert_index_to_field",
+    "filter_after_early_return",
     "group_local_assignment"
   ]
 }
