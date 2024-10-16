@@ -61,6 +61,7 @@ The following are automatically installed; if it fails, install manually:
 ## Credits
 
 - [roblox-ts](https://github.com/roblox-ts/roblox-ts), compiler
+- [rojo](https://github.com/rojo-rbx/rojo), synchronization
 - [tape](https://github.com/Belkworks/tape), bundler (heavily modified)
 - [darklua](https://github.com/seaofvoices/darklua), minifier
 - [rbxts-hax](https://github.com/richie0866/rbxts-hax), unc types
