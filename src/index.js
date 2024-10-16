@@ -1017,7 +1017,7 @@ async function main() {
       packageJSON.scripts.build += ` --package`;
       packageJSON.scripts.prepublishOnly += ` --package`;
       packageJSON.scripts.dev += ` --package`;
-      packageJSON.scripts["dev-sync"] += ` --package`;
+      packageJSON.scripts["dev-sync"] = undefined;
     }
 
     if (_package || !(hasGitDirectory || initializeGit)) {
