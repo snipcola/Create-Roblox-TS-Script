@@ -15,8 +15,6 @@ The following are automatically installed; if it fails, install manually:
 
 ## Instructions
 
-If you installed `pnpm`, use that instead of `npm` for the following steps.
-
 1. **Create Project**
 
    Run the following in a terminal, and follow the instructions:
@@ -29,7 +27,7 @@ If you installed `pnpm`, use that instead of `npm` for the following steps.
 
    Once the script has created your project, open it in an IDE, preferably [VSCode](https://code.visualstudio.com).
 
-   In the VSCode Terminal, you can execute `npm run dev / pnpm dev`. Now you can edit files in `src`, and it will compile to `out` when you save.
+   In the VSCode Terminal, you can execute `pnpm dev / npm run dev`. Now you can edit files in `src`, and it will compile to `out` when you save.
 
 3. **Build**
 
@@ -39,11 +37,11 @@ If you installed `pnpm`, use that instead of `npm` for the following steps.
 
    If you want to test your script on Roblox Studio, run the following once: `rojo plugin install`.
 
-   Then, simply run `npm run dev -- --sync / pnpm dev --sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
+   Then, simply run `pnpm dev-sync / npm run dev-sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
 
 5. **Deploy** (optional)
 
-   If you chose to initialize a git repository, and have it connected to a remote GitHub repo, you can run `npm run release / pnpm release` to create a release with the script attached.
+   If you chose to initialize a git repository, and have it connected to a remote GitHub repo, you can run `pnpm release / npm run release` to create a release with the script attached.
 
    Only do this once you've made changes and pushed them to the `main` branch. Otherwise, it won't do anything.
 

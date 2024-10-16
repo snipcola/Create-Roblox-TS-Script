@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 const os = require("os");
 const fs = require("fs/promises");
 const { createWriteStream } = require("fs");
@@ -358,8 +359,8 @@ async function main() {
       keys: [
         "name",
         "author",
-        "version",
         "description",
+        "version",
         "keywords",
         "license",
         "repository",
@@ -1014,8 +1015,9 @@ async function main() {
   if (packageJSON.scripts) {
     if (_package) {
       packageJSON.scripts.build += ` --package`;
-      packageJSON.scripts.dev += ` --package`;
       packageJSON.scripts.prepublishOnly += ` --package`;
+      packageJSON.scripts.dev += ` --package`;
+      packageJSON.scripts["dev-sync"] += ` --package`;
     }
 
     if (_package || !(hasGitDirectory || initializeGit)) {
@@ -1091,19 +1093,23 @@ async function main() {
   const launchJSONPath = path.resolve(directory, ".vscode", "launch.json");
   const launchJSON = await readJSONFile(launchJSONPath);
 
-  if (launchJSON?.configurations && _package) {
+  if (launchJSON?.configurations) {
     info("Modifying '.vscode/launch.json' values.");
 
     launchJSON.configurations = launchJSON.configurations.filter(
       function (configuration) {
-        if (
-          configuration.type === "node" &&
-          configuration.request === "launch"
-        ) {
-          configuration.args = [...(configuration.args || []), "--package"];
+        const args = configuration?.runtimeArgs;
+
+        if (packageManager?.name) {
+          configuration.runtimeExecutable = packageManager.name.toLowerCase();
         }
 
-        return !configuration.args?.includes("--sync");
+        if (args && _package) {
+          configuration.runtimeArgs = [...(args || []), "--package"];
+          return !args.includes("dev-sync");
+        }
+
+        return true;
       },
     );
 
