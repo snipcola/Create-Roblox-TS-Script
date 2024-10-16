@@ -1,6 +1,9 @@
 {
   "name": "Project",
-  "globIgnorePaths": ["../../**/package.json", "../../**/tsconfig.json"],
+  "globIgnorePaths": [
+    "../../**/package.json",
+    "../../**/tsconfig.json"
+  ],
   "tree": {
     "$path": "../../out",
     "include": {

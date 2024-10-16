@@ -510,17 +510,17 @@ async function main() {
     return true;
   }
 
+  const npmRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+
   function nameValidation(value) {
     if (!value) return "Name cannot be empty.";
-    if (!/^[a-zA-Z0-9-_]+$/.test(value))
-      return "Name is formatted incorrectly.";
+    if (!npmRegex.test(value)) return "Name is formatted incorrectly.";
     return true;
   }
 
   function authorValidation(value) {
     if (!value) return "Author cannot be empty.";
-    if (!/^[a-zA-Z0-9-_@. ]+$/.test(value))
-      return "Author is formatted incorrectly.";
+    if (!npmRegex.test(value)) return "Author is formatted incorrectly.";
     return true;
   }
 
@@ -741,7 +741,7 @@ async function main() {
               type: "text",
               name: "name",
               message: "Project Name",
-              initial: "Project",
+              initial: "project",
               validate: nameValidation,
             }
           : {},
@@ -752,7 +752,7 @@ async function main() {
               type: "text",
               name: "author",
               message: "Project Author",
-              initial: "Author",
+              initial: "author",
               validate: authorValidation,
             }
           : {},
@@ -966,22 +966,8 @@ async function main() {
     await error(true, true, "File 'package.json' doesn't exist.");
   }
 
-  function parsePackageJSONName() {
-    const _name = name.toLowerCase();
-
-    if (!name.startsWith("@") && _package) {
-      const _author = author
-        .toLowerCase()
-        .match(/[a-zA-Z]+/g)
-        .join("");
-
-      return `@${_author}/${_name}`;
-    }
-
-    return _name;
-  }
-
-  packageJSON.name = parsePackageJSONName();
+  packageJSON.name =
+    !name.startsWith("@") && _package ? `@${author}/${name}` : name;
   packageJSON.author = author;
   packageJSON.version = version;
 
@@ -1096,22 +1082,22 @@ async function main() {
   if (launchJSON?.configurations) {
     info("Modifying '.vscode/launch.json' values.");
 
-    launchJSON.configurations = launchJSON.configurations.filter(
-      function (configuration) {
-        const args = configuration?.runtimeArgs;
+    launchJSON.configurations = launchJSON.configurations.filter(function (
+      configuration,
+    ) {
+      const args = configuration?.runtimeArgs;
 
-        if (packageManager?.name) {
-          configuration.runtimeExecutable = packageManager.name.toLowerCase();
-        }
+      if (packageManager?.name) {
+        configuration.runtimeExecutable = packageManager.name.toLowerCase();
+      }
 
-        if (args && _package) {
-          configuration.runtimeArgs = [...(args || []), "--package"];
-          return !args.includes("dev-sync");
-        }
+      if (args && _package) {
+        configuration.runtimeArgs = [...(args || []), "--package"];
+        return !args.includes("dev-sync");
+      }
 
-        return true;
-      },
-    );
+      return true;
+    });
 
     await writeJSONFile(launchJSONPath, launchJSON);
   }

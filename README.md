@@ -45,6 +45,19 @@ The following are automatically installed; if it fails, install manually:
 
    Only do this once you've made changes and pushed them to the `main` branch. Otherwise, it won't do anything.
 
+6. **Packages** (optional)
+
+   You can install roblox-ts packages like usual, through your package manager. An example of a package is `@rbxts/vide`.
+
+   If the package is not under the `@rbxts` scope, use `pnpm scope / npm run scope` to add the scope of the package.
+
+   Here's an example of a package being used:
+
+   ```ts
+   import greet from "@snipcola/greet-test";
+   greet("world");
+   ```
+
 ## Credits
 
 - [roblox-ts](https://github.com/roblox-ts/roblox-ts), compiler
