@@ -353,7 +353,7 @@ async function main() {
         },
       },
     ],
-    gitFiles: [path.resolve(template, ".gitignore")],
+    gitFiles: [path.resolve(template, "_gitignore")],
     vsCodeFiles: [path.resolve(template, ".vscode")],
     packageJSON: {
       keys: [
@@ -492,7 +492,10 @@ async function main() {
 
   async function copy(file, folder, force = true) {
     const name = path.basename(file);
-    const newFile = path.resolve(folder, name);
+    const newFile = path.resolve(
+      folder,
+      name.startsWith("_") ? name.replace("_", ".") : name,
+    );
 
     if (force || !(await fileExists(newFile))) {
       await fs.cp(file, newFile, { force: true, recursive: true });
