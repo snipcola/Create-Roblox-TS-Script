@@ -93,12 +93,45 @@ const {
   .wrap(yargs.terminalWidth())
   .parseSync();
 
-async function fileExists(file) {
+async function fileExists(filePath) {
   try {
-    await fs.access(file);
+    await fs.access(filePath);
     return true;
   } catch {
     return false;
+  }
+}
+
+async function isDirectory(dirPath) {
+  try {
+    return (await fs.stat(dirPath)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function directoryExists(dirPath) {
+  return (await fileExists(dirPath)) && (await isDirectory(dirPath));
+}
+
+async function copy(file, folder, force = true) {
+  const name = path.basename(file);
+  const newFile = path.resolve(
+    folder,
+    name.startsWith("_") ? name.replace("_", ".") : name,
+  );
+
+  if (force || !(await fileExists(newFile))) {
+    await fs.cp(file, newFile, { force: true, recursive: true });
+    return newFile;
+  }
+}
+
+async function remove(path, directory) {
+  if (await (directory ? directoryExists : fileExists)(path)) {
+    const args = { force: true };
+    if (directory) args.recursive = true;
+    await fs.rm(path, args);
   }
 }
 
@@ -299,8 +332,8 @@ async function installAftman(temporaryDirectory) {
   let folder;
 
   async function clean() {
-    if (file) await fs.rm(file, { force: true });
-    if (folder) await fs.rm(folder, { force: true, recursive: true });
+    if (file) await remove(file);
+    if (folder) await remove(folder, true);
     return true;
   }
 
@@ -475,31 +508,12 @@ async function main() {
       console.error(red(`× ${message}`));
     }
 
-    if (
-      deleteDirectory &&
-      directory &&
-      createdDirectory &&
-      (await fileExists(directory)) &&
-      (await fs.stat(directory)).isDirectory()
-    ) {
-      await fs.rm(directory, { force: true, recursive: true });
+    if (deleteDirectory && directory && createdDirectory) {
+      await remove(directory, true);
     }
 
     if (exit) {
       process.exit(1);
-    }
-  }
-
-  async function copy(file, folder, force = true) {
-    const name = path.basename(file);
-    const newFile = path.resolve(
-      folder,
-      name.startsWith("_") ? name.replace("_", ".") : name,
-    );
-
-    if (force || !(await fileExists(newFile))) {
-      await fs.cp(file, newFile, { force: true, recursive: true });
-      return newFile;
     }
   }
 
@@ -638,10 +652,10 @@ async function main() {
     await error(true, false, "Not a directory.");
   }
 
-  let directoryExists = await fileExists(directory);
+  let _directoryExists = await fileExists(directory);
 
-  if (directoryExists && !pdirectory) {
-    if (!(await fs.stat(directory)).isDirectory()) {
+  if (_directoryExists && !pdirectory) {
+    if (!(await isDirectory(directory))) {
       await error(true, false, "Not a directory.");
     }
 
@@ -660,22 +674,20 @@ async function main() {
     );
 
     if (deleteDirectory) {
-      await fs.rm(directory, { force: true, recursive: true });
-      directoryExists = false;
+      await remove(directory, true);
+      _directoryExists = false;
     }
   }
 
   const srcDirectory = path.resolve(directory, "src");
-  const srcExists =
-    (await fileExists(srcDirectory)) &&
-    (await fs.stat(srcDirectory)).isDirectory();
+  const srcExists = await directoryExists(srcDirectory);
 
   const existingPackageJSON =
-    directoryExists &&
+    _directoryExists &&
     (await readJSONFile(path.resolve(directory, "package.json")));
 
   const existingTSConfigJSON =
-    directoryExists &&
+    _directoryExists &&
     (await readJSONFile(path.resolve(directory, "tsconfig.json")));
 
   const rojoName = "default.project.json";
@@ -690,16 +702,15 @@ async function main() {
     },
   ];
 
-  if (directoryExists) {
+  if (_directoryExists) {
     await Promise.all(
       projectJSONs.map(async (p) => (p.existing = await readJSONFile(p.file))),
     );
   }
 
   const hasGitDirectory =
-    directoryExists &&
-    (await fileExists(path.resolve(directory, ".git"))) &&
-    (await fs.stat(path.resolve(directory, ".git"))).isDirectory();
+    _directoryExists &&
+    (await directoryExists(path.resolve(directory, ".git")));
 
   let {
     package: _package,
@@ -860,17 +871,19 @@ async function main() {
         )
       : { openInIDE: false };
 
-  if (!_package) {
-    config.gitFiles.push(path.resolve(template, ".github"));
-  } else {
-    const githubDirectory = path.resolve(directory, ".github");
+  const actionDirectories = [
+    path.resolve(directory, ".github"),
+    path.resolve(directory, ".gitea"),
+  ];
 
-    if (
-      (await fileExists(githubDirectory)) &&
-      (await fs.stat(githubDirectory)).isDirectory()
-    ) {
-      await fs.rm(githubDirectory, { force: true, recursive: true });
-    }
+  const actionDirectory = (
+    await Promise.all(actionDirectories.map(directoryExists))
+  ).includes(true);
+
+  if (!_package && !actionDirectory) {
+    config.gitFiles.push(path.resolve(template, ".github"));
+  } else if (_package) {
+    await Promise.all(actionDirectories.map((d) => remove(d, true)));
   }
 
   if (initializeGit) {
@@ -931,7 +944,7 @@ async function main() {
     }
   }
 
-  if (!directoryExists) {
+  if (!_directoryExists) {
     info(`Creating '${path.basename(directory)}'.`);
     await fs.mkdir(directory, { recursive: true });
     createdDirectory = true;
@@ -950,7 +963,7 @@ async function main() {
     info(`Moving template files to '${path.basename(directory)}'.`);
 
     if (srcExists) {
-      await fs.rm(srcDirectory, { force: true, recursive: true });
+      await remove(srcDirectory, true);
     }
 
     const newDirectory = await copy(srcTemplate.directory, directory);
