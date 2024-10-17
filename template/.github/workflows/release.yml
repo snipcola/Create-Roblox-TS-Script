@@ -42,14 +42,10 @@ jobs:
         uses: martinbeentjes/npm-get-version-action@v1.3.1
 
       - name: Release
-        uses: ncipollo/release-action@v1.14.0
+        uses: softprops/action-gh-release@v2.0.8
         with:
-          draft: false
-          makeLatest: true
-          allowUpdates: true
-          replacesArtifacts: true
-          omitBody: true
-          generateReleaseNotes: true
+          make_latest: true
+          generate_release_notes: true
           name: 📦 Release ${{ steps.version.outputs.current-version }}
-          tag: ${{ steps.version.outputs.current-version }}
-          artifacts: "out/*.lua"
+          tag_name: ${{ steps.version.outputs.current-version }}
+          files: "out/*.lua"
