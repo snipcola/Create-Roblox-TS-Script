@@ -526,15 +526,21 @@ async function main() {
 
   const npmRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
 
+  function processArg(value) {
+    return (value || "").trim().toLowerCase();
+  }
+
   function nameValidation(value) {
     if (!value) return "Name cannot be empty.";
-    if (!npmRegex.test(value)) return "Name is formatted incorrectly.";
+    if (!npmRegex.test(processArg(value)))
+      return "Name is formatted incorrectly.";
     return true;
   }
 
   function authorValidation(value) {
     if (!value) return "Author cannot be empty.";
-    if (!npmRegex.test(value)) return "Author is formatted incorrectly.";
+    if (!npmRegex.test(processArg(value)))
+      return "Author is formatted incorrectly.";
     return true;
   }
 
@@ -830,9 +836,9 @@ async function main() {
       )) ||
     srcTemplate;
 
-  name = (pname || existingPackageJSON?.name || name).trim();
-  author = (pauthor || existingPackageJSON?.author || author).trim();
-  version = (pversion || existingPackageJSON?.version || version).trim();
+  name = processArg(pname || existingPackageJSON?.name || name);
+  author = processArg(pauthor || existingPackageJSON?.author || author);
+  version = processArg(pversion || existingPackageJSON?.version || version);
   initializeGit =
     !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
