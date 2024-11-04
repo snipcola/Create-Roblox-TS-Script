@@ -1,25 +1,29 @@
 #!/usr/bin/env node
 
-const os = require("os");
-const fs = require("fs/promises");
-const { createWriteStream } = require("fs");
+import os from "os";
+import fs from "fs/promises";
+import { createWriteStream } from "fs";
 
-const path = require("path");
-const { randomUUID } = require("crypto");
+import path from "path";
+import { randomUUID } from "crypto";
 
-const { Readable } = require("stream");
-const { finished } = require("stream/promises");
+import { Readable } from "stream";
+import { finished } from "stream/promises";
 
-const process = require("process");
-const { spawn } = require("child_process");
+import process from "process";
+import { spawn } from "child_process";
 
-const prompts = require("prompts");
-const yargs = require("yargs");
+import prompts from "prompts";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
-const { lookpath } = require("lookpath");
-const { blue, green, yellow, red } = require("colorette");
+import { lookpath } from "lookpath";
+import { blue, green, yellow, red } from "colorette";
 
-const unzipper = require("unzipper");
+import unzipper from "unzipper";
+
+const __filename = new URL(import.meta.url).pathname;
+const __dirname = path.dirname(__filename);
 
 const {
   package: __package,
@@ -32,7 +36,7 @@ const {
   pmanager,
   ide: _ide,
   openide,
-} = yargs
+} = yargs(hideBin(process.argv))
   .usage("Create Roblox-TS Script")
   .option("package", {
     alias: "p",
@@ -90,7 +94,7 @@ const {
   .describe("version", "Show Version")
   .recommendCommands()
   .strict()
-  .wrap(yargs.terminalWidth())
+  .wrap(yargs().terminalWidth())
   .parseSync();
 
 async function fileExists(filePath) {

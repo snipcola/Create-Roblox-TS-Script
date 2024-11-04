@@ -2,7 +2,7 @@
   "name": "create-roblox-ts-script",
   "author": "Snipcola",
   "description": "CLI tool for creating Roblox scripts using TypeScript.",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "keywords": [
     "roblox",
     "typescript",
@@ -17,6 +17,7 @@
     "type": "git",
     "url": "https://git.snipcola.com/snipcola/Create-Roblox-TS-Script.git"
   },
+  "type": "module",
   "main": "src/index.js",
   "bin": {
     "create-roblox-ts-script": "src/index.js"
