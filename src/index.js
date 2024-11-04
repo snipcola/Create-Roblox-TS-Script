@@ -4,7 +4,8 @@ import os from "os";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
 
-import path from "path";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 
 import { Readable } from "stream";
@@ -22,8 +23,7 @@ import { blue, green, yellow, red } from "colorette";
 
 import unzipper from "unzipper";
 
-const __filename = new URL(import.meta.url).pathname;
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const {
   package: __package,
@@ -1105,22 +1105,22 @@ async function main() {
   if (launchJSON?.configurations) {
     info("Modifying '.vscode/launch.json' values.");
 
-    launchJSON.configurations = launchJSON.configurations.filter(function (
-      configuration,
-    ) {
-      const args = configuration?.runtimeArgs;
+    launchJSON.configurations = launchJSON.configurations.filter(
+      function (configuration) {
+        const args = configuration?.runtimeArgs;
 
-      if (packageManager?.name) {
-        configuration.runtimeExecutable = packageManager.name.toLowerCase();
-      }
+        if (packageManager?.name) {
+          configuration.runtimeExecutable = packageManager.name.toLowerCase();
+        }
 
-      if (args && _package) {
-        configuration.runtimeArgs = [...(args || []), "--package"];
-        return !args.includes("dev-sync");
-      }
+        if (args && _package) {
+          configuration.runtimeArgs = [...(args || []), "--package"];
+          return !args.includes("dev-sync");
+        }
 
-      return true;
-    });
+        return true;
+      },
+    );
 
     await writeJSONFile(launchJSONPath, launchJSON);
   }
