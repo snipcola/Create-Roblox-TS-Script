@@ -369,8 +369,8 @@ async function main() {
   const config = {
     files: [
       path.resolve(template, "assets"),
-      path.resolve(template, ".eslintrc"),
-      path.resolve(template, ".prettierrc"),
+      path.resolve(template, "eslint.config.js"),
+      path.resolve(template, ".prettierrc.toml"),
       path.resolve(template, "aftman.toml"),
       path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
