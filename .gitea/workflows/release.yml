@@ -15,11 +15,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           github-server-url: ${{ env.SERVER_URL }}
 
       - name: Publish
-        uses: JS-DevTools/npm-publish@v3
+        uses: JS-DevTools/npm-publish@v3.1.1
         with:
           token: ${{ secrets.npm_auth }}
