@@ -995,7 +995,7 @@ async function main() {
   packageJSON.version = version;
 
   if (_package) {
-    packageJSON.main = "out/init.lua";
+    packageJSON.main = "out/init.luau";
     packageJSON.types = "out/index.d.ts";
   }
 

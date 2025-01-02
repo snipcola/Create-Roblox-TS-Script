@@ -48,4 +48,4 @@ jobs:
           generate_release_notes: true
           name: 📦 Release ${{ steps.version.outputs.current-version }}
           tag_name: ${{ steps.version.outputs.current-version }}
-          files: "out/*.lua"
+          files: "out/*.luau"
