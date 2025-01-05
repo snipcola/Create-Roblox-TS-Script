@@ -6,7 +6,7 @@ import { createWriteStream } from "fs";
 
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { randomUUID } from "crypto";
+import { ulid } from "ulidx";
 
 import { Readable } from "stream";
 import { finished } from "stream/promises";
@@ -266,7 +266,7 @@ async function downloadFile(url, folder, name) {
     const response = await fetch(url);
     if (!response.ok) return false;
 
-    const filePath = path.resolve(folder, name || randomUUID());
+    const filePath = path.resolve(folder, name || ulid());
     const fileStream = createWriteStream(filePath, { flags: "wx" });
 
     await finished(Readable.fromWeb(response.body).pipe(fileStream));
@@ -279,7 +279,7 @@ async function downloadFile(url, folder, name) {
 async function extractZip(file, folder, name) {
   try {
     const zip = await unzipper.Open.file(file);
-    const _path = path.resolve(folder, name || randomUUID());
+    const _path = path.resolve(folder, name || ulid());
 
     await zip.extract({ path: _path });
     return _path;
