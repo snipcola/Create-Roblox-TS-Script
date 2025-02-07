@@ -1091,32 +1091,6 @@ async function main() {
     await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
   }
 
-  const launchJSONPath = path.resolve(directory, ".vscode", "launch.json");
-  const launchJSON = await readJSONFile(launchJSONPath);
-
-  if (launchJSON?.configurations) {
-    info("Modifying '.vscode/launch.json' values.");
-
-    launchJSON.configurations = launchJSON.configurations.filter(
-      function (configuration) {
-        const args = configuration?.runtimeArgs;
-
-        if (packageManager?.name) {
-          configuration.runtimeExecutable = packageManager.name.toLowerCase();
-        }
-
-        if (args && _package) {
-          configuration.runtimeArgs = [...(args || []), "--package"];
-          return !args.includes("dev-sync");
-        }
-
-        return true;
-      },
-    );
-
-    await writeJSONFile(launchJSONPath, launchJSON);
-  }
-
   if (initializeGit) {
     info("Initializing git repository.");
 
