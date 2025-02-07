@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import os from "os";
 import fs from "fs/promises";
@@ -75,7 +75,7 @@ const {
   })
   .option("pmanager", {
     alias: "pm",
-    describe: "Package Manager (e.g. pnpm)",
+    describe: "Package Manager (e.g. bun)",
     type: "string",
   })
   .option("ide", {
@@ -468,16 +468,8 @@ async function main() {
     },
     supportedPackageManagers: [
       {
-        name: "PNPM",
-        command: "pnpm",
-      },
-      {
-        name: "Yarn",
-        command: "yarn",
-      },
-      {
-        name: "NPM",
-        command: "npm",
+        name: "Bun",
+        command: "bun",
       },
     ],
     supportedIDEs: [
