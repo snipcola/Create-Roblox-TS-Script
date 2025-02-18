@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import os from "os";
 import fs from "fs/promises";
@@ -33,7 +33,6 @@ const {
   pauthor,
   pversion,
   git: _git,
-  pmanager,
   ide: _ide,
   openide,
 } = yargs(hideBin(process.argv))
@@ -72,11 +71,6 @@ const {
     alias: "g",
     describe: "Initialize Git Repo",
     type: "boolean",
-  })
-  .option("pmanager", {
-    alias: "pm",
-    describe: "Package Manager (e.g. bun)",
-    type: "string",
   })
   .option("ide", {
     alias: "i",
@@ -468,8 +462,8 @@ async function main() {
     },
     supportedPackageManagers: [
       {
-        name: "Bun",
-        command: "bun",
+        name: "NPM",
+        command: "npm",
       },
     ],
     supportedIDEs: [
@@ -575,13 +569,6 @@ async function main() {
   await checkValidation(pauthor, authorValidation);
   await checkValidation(pversion, versionValidation);
 
-  if (
-    pmanager &&
-    !config.supportedPackageManagers.find((p) => p.command === pmanager)
-  ) {
-    await error(true, false, `'${pmanager}' not supported.`);
-  }
-
   if (_ide && !config.supportedIDEs.find((i) => i.command === _ide)) {
     await error(true, false, `'${_ide}' not supported.`);
   }
@@ -612,15 +599,6 @@ async function main() {
       }),
     )
   ).filter((p) => p !== undefined);
-
-  if (
-    pmanager &&
-    !packageManagers.find(
-      (n) => n.name?.toLowerCase() === pmanager.toLowerCase(),
-    )
-  ) {
-    await error(true, false, `'${pmanager}' not available.`);
-  }
 
   if (
     _ide &&
@@ -792,7 +770,7 @@ async function main() {
           : {},
       ],
       ...[
-        !(pmanager || packageManagers.length <= 1)
+        packageManagers.length > 1
           ? {
               type: "select",
               name: "packageManager",
@@ -840,11 +818,7 @@ async function main() {
 
   packageManager =
     packageManagers.length > 0 &&
-    ((pmanager &&
-      packageManagers.find(
-        (p) => p.name?.toLowerCase() === pmanager.toLowerCase(),
-      )) ||
-      packageManager ||
+    (packageManager ||
       packageManagers[0]);
 
   IDE =
@@ -1089,6 +1063,32 @@ async function main() {
 
   if (IDE || initializeGit) {
     await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
+  }
+
+  const launchJSONPath = path.resolve(directory, ".vscode", "launch.json");
+  const launchJSON = await readJSONFile(launchJSONPath);
+
+  if (launchJSON?.configurations) {
+    info("Modifying '.vscode/launch.json' values.");
+
+    launchJSON.configurations = launchJSON.configurations.filter(
+      function (configuration) {
+        const args = configuration?.runtimeArgs;
+
+        if (packageManager?.name) {
+          configuration.runtimeExecutable = packageManager.name.toLowerCase();
+        }
+
+        if (args && _package) {
+          configuration.runtimeArgs = [...(args || []), "--package"];
+          return !args.includes("dev-sync");
+        }
+
+        return true;
+      },
+    );
+
+    await writeJSONFile(launchJSONPath, launchJSON);
   }
 
   if (initializeGit) {
