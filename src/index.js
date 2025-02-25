@@ -380,7 +380,7 @@ async function main() {
         directory: path.resolve(template, "src", "hello-world-ui"),
         entrypoint: (dir) => path.resolve(dir, "src", "app.tsx"),
         dependencies: {
-          "@rbxts/vide": "0.5.4",
+          "@rbxts/vide": "0.5.6",
         },
       },
     ],
@@ -817,9 +817,7 @@ async function main() {
     !hasGitDirectory && git && _git !== undefined ? _git : initializeGit;
 
   packageManager =
-    packageManagers.length > 0 &&
-    (packageManager ||
-      packageManagers[0]);
+    packageManagers.length > 0 && (packageManager || packageManagers[0]);
 
   IDE =
     IDEs.length > 0 &&
