@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu
 
     env:
-      SERVER_URL: https://git.snipcola.com
+      SERVER_URL: https://code.snipcola.com
 
     steps:
       - name: Checkout

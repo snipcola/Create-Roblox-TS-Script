@@ -380,7 +380,7 @@ async function main() {
         directory: path.resolve(template, "src", "hello-world-ui"),
         entrypoint: (dir) => path.resolve(dir, "src", "app.tsx"),
         dependencies: {
-          "@rbxts/vide": "0.5.6",
+          "@rbxts/vide": "0.5.7",
         },
       },
     ],
