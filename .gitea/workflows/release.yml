@@ -10,16 +10,11 @@ jobs:
     name: Publish
     runs-on: ubuntu
 
-    env:
-      SERVER_URL: https://code.snipcola.com
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          github-server-url: ${{ env.SERVER_URL }}
+        uses: actions/checkout@v4.3.0
 
       - name: Publish
         uses: JS-DevTools/npm-publish@v3.1.1
         with:
-          token: ${{ secrets.npm_auth }}
+          token: ${{ secrets.NPM_AUTH }}
