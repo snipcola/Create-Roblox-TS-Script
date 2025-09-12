@@ -15,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v5.0.0
         with:
-          node-version: 24.4.0
+          node-version: 24.8.0
 
       - name: Install Dependencies
         run: npm install
@@ -40,14 +40,15 @@ jobs:
         run: npm run build
 
       - name: Get Version
+        uses: saionaro/extract-package-version@v1.3.0
         id: version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
 
       - name: Release
-        uses: softprops/action-gh-release@v2.3.2
+        uses: softprops/action-gh-release@v2.3.3
         with:
           make_latest: true
+          overwrite_files: true
           generate_release_notes: true
-          name: 📦 Release ${{ steps.version.outputs.current-version }}
-          tag_name: ${{ steps.version.outputs.current-version }}
+          name: 📦 Release ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
           files: "out/*.luau"
