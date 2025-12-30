@@ -1057,26 +1057,6 @@ async function main() {
     }),
   );
 
-  if (initializeGit) {
-    info("Initializing git repository.");
-
-    const commands = [
-      await executeCommand(git, ["init"], directory),
-      await executeCommand(git, ["add", "."], directory),
-      await executeCommand(
-        git,
-        ["commit", "-m", "\u{1F680} Initialize Repository"],
-        directory,
-      ),
-      await executeCommand(git, ["branch", "-M", "main"], directory),
-      await executeCommand(git, ["branch", "release"], directory),
-    ];
-
-    if (commands.some(({ success }) => !success)) {
-      await error(true, true, "Failed to initialize git repository.");
-    }
-  }
-
   if (!rokit) {
     warn("'rokit' not found, attempting to install.");
     await installRokit(temporaryDirectory);
@@ -1136,6 +1116,26 @@ async function main() {
         true,
         `Failed to build project using '${packageManager.name}'.`,
       );
+    }
+  }
+
+  if (initializeGit) {
+    info("Initializing git repository.");
+
+    const commands = [
+      await executeCommand(git, ["init"], directory),
+      await executeCommand(git, ["add", "."], directory),
+      await executeCommand(
+        git,
+        ["commit", "-m", "\u{1F680} Initialize Repository"],
+        directory,
+      ),
+      await executeCommand(git, ["branch", "-M", "main"], directory),
+      await executeCommand(git, ["branch", "release"], directory),
+    ];
+
+    if (commands.some(({ success }) => !success)) {
+      await error(true, true, "Failed to initialize git repository.");
     }
   }
 
