@@ -216,7 +216,7 @@ function preserveObject(object, existingObject, { entrypoint, keys, force }) {
   return entrypoint ? object : newObject;
 }
 
-function executeCommand(command, args, cwd) {
+function executeCommand(command, args, cwd, timeout) {
   return new Promise(async function (resolve) {
     const useCMD =
       process.platform === "win32" && !command?.toLowerCase()?.endsWith(".exe");
@@ -229,22 +229,55 @@ function executeCommand(command, args, cwd) {
       },
     );
 
+    let timer;
+
+    if (timeout && timeout > 0) {
+      timer = setTimeout(function () {
+        result.unref();
+
+        if (result.stdout) result.stdout.destroy();
+        if (result.stderr) result.stderr.destroy();
+
+        resolve({
+          success: false,
+          output,
+          error: "Timed out",
+        });
+      }, timeout);
+    }
+
     let output = "";
     let error = "";
 
-    result.stdout.on("data", function (data) {
-      output += data;
-    });
+    if (result.stdout) {
+      result.stdout.on("data", function (data) {
+        output += data;
+      });
+    }
 
-    result.stderr.on("data", function (data) {
-      error += data;
-    });
+    if (result.stderr) {
+      result.stderr.on("data", function (data) {
+        error += data;
+      });
+    }
 
     result.on("close", function (code) {
+      if (timer) clearTimeout(timer);
+
       resolve({
         success: code === 0,
         output,
         error,
+      });
+    });
+
+    result.on("error", function ({ message }) {
+      if (timer) clearTimeout(timer);
+
+      resolve({
+        success: false,
+        output,
+        error: message,
       });
     });
   });
@@ -1145,11 +1178,11 @@ async function main() {
       IDE.path,
       [".", ...(srcTemplate ? [srcTemplate.entrypoint(directory)] : [])],
       directory,
+      2500,
     );
   }
 
   success(`Created '${name}': ${directory}`);
-  process.exit(0);
 }
 
 main();
