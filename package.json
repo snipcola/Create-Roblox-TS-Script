@@ -15,7 +15,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://code.snipcola.com/snipcola/Create-Roblox-TS-Script.git"
+    "url": "https://code.snipcola.st/snipcola/Create-Roblox-TS-Script"
   },
   "type": "module",
   "main": "src/index.js",
