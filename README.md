@@ -1,4 +1,4 @@
-## Create Roblox-TS Script
+# Create Roblox-TS Script
 
 Builds & bundles TypeScript source files into a Lua script, which you can use on Roblox.
 
@@ -6,11 +6,11 @@ Builds & bundles TypeScript source files into a Lua script, which you can use on
 
 Make sure the following are installed:
 
-- [node](https://nodejs.org)
+- [bun](https://bun.sh)
 
 The following are automatically installed; if it fails, install manually:
 
-- [aftman](https://github.com/LPGhatguy/aftman/releases/latest)
+- [rokit](https://github.com/rojo-rbx/rokit/releases/latest)
 
 ## Instructions
 
@@ -19,28 +19,28 @@ The following are automatically installed; if it fails, install manually:
    Run the following in a terminal, and follow the instructions:
 
    ```
-   npm create roblox-ts-script
+   bun create roblox-ts-script
    ```
 
 2. **Develop**
 
-   Once the script has created your project, open it in an IDE, preferably [VSCode](https://code.visualstudio.com).
+   Once the script has created your project, open it in an IDE, preferably [Zed](https://zed.dev).
 
-   In the VSCode Terminal, you can execute `npm run dev`. Now you can edit files in `src`, and it will compile to `out` when you save.
+   In the Zed Terminal, you can execute `bun run dev`. Now you can edit files in `src`, and it will compile to `out` when you save.
 
 3. **Build**
 
-   If you'd like to manually start the build process, instead of running the dev script, run `npm run build` which will build once.
+   If you'd like to manually start the build process, instead of running the dev script, run `bun run build` which will build once.
 
 4. **Sync** (optional)
 
    If you want to test your script on Roblox Studio, run the following once: `rojo plugin install`.
 
-   Then, simply run `npm run dev-sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
+   Then, simply run `bun run dev-sync` and connect on Roblox Studio (look for Rojo in the Plugins section).
 
 5. **Deploy** (optional)
 
-   If you chose to initialize a git repository, and have it connected to a remote GitHub repo, you can run `npm run release` to create a release with the script attached.
+   If you chose to initialize a git repository, and have it connected to a remote GitHub repo, you can run `bun run release` to create a release with the script attached.
 
    Only do this once you've made changes and pushed them to the `main` branch. Otherwise, it won't do anything.
 
@@ -48,7 +48,7 @@ The following are automatically installed; if it fails, install manually:
 
    You can install roblox-ts packages like usual, through your package manager. An example of a package is `@rbxts/vide`.
 
-   If the package is not under the `@rbxts` scope, use `npm run scope` to add the scope of the package.
+   If the package is not under the `@rbxts` scope, use `bun run scope` to add the scope of the package.
 
    Here's an example of a package being used:
 

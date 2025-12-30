@@ -1,11 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import os from "os";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
 
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
+import path from "path";
 import { ulid } from "ulidx";
 
 import { Readable } from "stream";
@@ -18,12 +17,8 @@ import prompts from "prompts";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { lookpath } from "lookpath";
-import { blue, green, yellow, red } from "colorette";
-
 import unzipper from "unzipper";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { styleText } from "util";
 
 const {
   package: __package,
@@ -282,16 +277,16 @@ async function extractZip(file, folder, name) {
   }
 }
 
-async function installAftman(temporaryDirectory) {
-  const aftman = {
-    repo: "LPGhatguy/aftman",
-    version: "v0.3.0",
+async function installRokit(temporaryDirectory) {
+  const rokit = {
+    repo: "rojo-rbx/rokit",
+    version: "v1.2.0",
     files: {
-      linux: "aftman-0.3.0-linux-x86_64.zip",
-      linuxArm: "aftman-0.3.0-linux-aarch64.zip",
-      macos: "aftman-0.3.0-macos-x86_64.zip",
-      macosArm: "aftman-0.3.0-macos-aarch64.zip",
-      windows: "aftman-0.3.0-windows-x86_64.zip",
+      linux: "rokit-1.2.0-linux-x86_64.zip",
+      linuxArm: "rokit-1.2.0-linux-aarch64.zip",
+      macos: "rokit-1.2.0-macos-x86_64.zip",
+      macosArm: "rokit-1.2.0-windows-aarch64.zip",
+      windows: "rokit-1.2.0-windows-x86_64.zip",
     },
     file: function () {
       const { platform, arch } = process;
@@ -335,7 +330,7 @@ async function installAftman(temporaryDirectory) {
     return true;
   }
 
-  file = await downloadFile(aftman.file(), temporaryDirectory);
+  file = await downloadFile(rokit.file(), temporaryDirectory);
   if (!file) return !(await clean());
 
   folder = await extractZip(file, temporaryDirectory);
@@ -350,22 +345,22 @@ async function installAftman(temporaryDirectory) {
   return await clean();
 }
 
-async function getAftman(bin) {
-  const directory = path.resolve(os.homedir(), ".aftman", "bin");
-  return await lookpath(bin || "aftman", { include: [directory] });
+function getRokit(bin) {
+  const directory = path.resolve(os.homedir(), ".rokit", "bin");
+  return Bun.which(bin || "rokit", { PATH: directory });
 }
 
 async function main() {
   const temporaryDirectory = await fs.realpath(os.tmpdir());
 
-  const root = path.resolve(__dirname, "..");
+  const root = path.resolve(import.meta.dirname, "..");
   const template = path.resolve(root, "template");
   const config = {
     files: [
       path.resolve(template, "assets"),
       path.resolve(template, "eslint.config.js"),
       path.resolve(template, ".prettierrc.toml"),
-      path.resolve(template, "aftman.toml"),
+      path.resolve(template, "rokit.toml"),
       path.resolve(template, "package.json"),
       path.resolve(template, "tsconfig.json"),
     ],
@@ -385,7 +380,6 @@ async function main() {
       },
     ],
     gitFiles: [path.resolve(template, "_gitignore")],
-    vsCodeFiles: [path.resolve(template, ".vscode")],
     packageJSON: {
       keys: [
         "name",
@@ -462,11 +456,15 @@ async function main() {
     },
     supportedPackageManagers: [
       {
-        name: "NPM",
-        command: "npm",
+        name: "Bun",
+        command: "bun",
       },
     ],
     supportedIDEs: [
+      {
+        name: "Zed",
+        command: "zed",
+      },
       {
         name: "VSCodium",
         command: "codium",
@@ -482,20 +480,20 @@ async function main() {
   let createdDirectory = false;
 
   function info(message) {
-    console.log(blue(`i ${message}`));
+    console.log(styleText("blue", `i ${message}`));
   }
 
   function success(message) {
-    console.log(green(`√ ${message}`));
+    console.log(styleText("green", `√ ${message}`));
   }
 
   function warn(message) {
-    console.log(yellow(`! ${message}`));
+    console.log(styleText("yellow", `! ${message}`));
   }
 
   async function error(exit, deleteDirectory, message) {
     if (message) {
-      console.error(red(`× ${message}`));
+      console.error(styleText("red", `× ${message}`));
     }
 
     if (deleteDirectory && directory && createdDirectory) {
@@ -573,14 +571,14 @@ async function main() {
     await error(true, false, `'${_ide}' not supported.`);
   }
 
-  const git = await lookpath("git");
-  let aftman = await getAftman();
+  const git = Bun.which("git");
+  let rokit = getRokit();
 
   const packageManagers = (
     await Promise.all(
       config.supportedPackageManagers.map(function ({ name, command }) {
         return new Promise(async function (resolve) {
-          const path = await lookpath(command);
+          const path = Bun.which(command);
           if (path) return resolve({ path, name });
           resolve();
         });
@@ -592,7 +590,7 @@ async function main() {
     await Promise.all(
       config.supportedIDEs.map(function ({ name, command }) {
         return new Promise(async function (resolve) {
-          const path = await lookpath(command);
+          const path = Bun.which(command);
           if (path) return resolve({ path, name });
           resolve();
         });
@@ -1059,36 +1057,6 @@ async function main() {
     }),
   );
 
-  if (IDE || initializeGit) {
-    await Promise.all(config.vsCodeFiles.map((f) => copy(f, directory)));
-  }
-
-  const launchJSONPath = path.resolve(directory, ".vscode", "launch.json");
-  const launchJSON = await readJSONFile(launchJSONPath);
-
-  if (launchJSON?.configurations) {
-    info("Modifying '.vscode/launch.json' values.");
-
-    launchJSON.configurations = launchJSON.configurations.filter(
-      function (configuration) {
-        const args = configuration?.runtimeArgs;
-
-        if (packageManager?.name) {
-          configuration.runtimeExecutable = packageManager.name.toLowerCase();
-        }
-
-        if (args && _package) {
-          configuration.runtimeArgs = [...(args || []), "--package"];
-          return !args.includes("dev-sync");
-        }
-
-        return true;
-      },
-    );
-
-    await writeJSONFile(launchJSONPath, launchJSON);
-  }
-
   if (initializeGit) {
     info("Initializing git repository.");
 
@@ -1109,24 +1077,24 @@ async function main() {
     }
   }
 
-  if (!aftman) {
-    warn("'aftman' not found, attempting to install.");
-    await installAftman(temporaryDirectory);
-    aftman = await getAftman();
+  if (!rokit) {
+    warn("'rokit' not found, attempting to install.");
+    await installRokit(temporaryDirectory);
+    rokit = getRokit();
 
-    if (!aftman) {
+    if (!rokit) {
       await error(
         true,
         true,
-        "Failed to install 'aftman': https://github.com/LPGhatguy/aftman/releases/latest",
+        "Failed to install 'rokit': https://github.com/rojo-rbx/rokit/releases/latest",
       );
     }
   }
 
-  info("Installing dependencies using 'aftman'.");
-  await executeCommand(aftman, ["install", "--no-trust-check"], directory);
+  info("Installing dependencies using 'rokit'.");
+  await executeCommand(rokit, ["install", "--no-trust-check"], directory);
 
-  const rojo = await getAftman("rojo");
+  const rojo = getRokit("rojo");
 
   if (!rojo) {
     await error(true, true, "'rojo' not found.");
