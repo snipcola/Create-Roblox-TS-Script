@@ -1149,6 +1149,7 @@ async function main() {
   }
 
   success(`Created '${name}': ${directory}`);
+  process.exit(0);
 }
 
 main();
