@@ -220,7 +220,7 @@ function executeCommand(command, args, cwd) {
   return new Promise(async function (resolve) {
     const useCMD =
       process.platform === "win32" && !command?.toLowerCase()?.endsWith(".exe");
-    const result = await spawn(
+    const result = spawn(
       useCMD ? "cmd.exe" : command,
       useCMD ? ["/c", command, ...args] : args,
       {
@@ -1140,19 +1140,12 @@ async function main() {
   }
 
   if (IDE && (openide || openInIDE)) {
-    info(`Opening project in '${IDE.name}'.`);
-
-    if (
-      !(
-        await executeCommand(
-          IDE.path,
-          [".", ...(srcTemplate ? [srcTemplate.entrypoint(directory)] : [])],
-          directory,
-        )
-      ).success
-    ) {
-      await error(false, false, `Failed to open project in '${IDE.name}'.`);
-    }
+    info(`Attempted to open project in '${IDE.name}'.`);
+    executeCommand(
+      IDE.path,
+      [".", ...(srcTemplate ? [srcTemplate.entrypoint(directory)] : [])],
+      directory,
+    );
   }
 
   success(`Created '${name}': ${directory}`);
